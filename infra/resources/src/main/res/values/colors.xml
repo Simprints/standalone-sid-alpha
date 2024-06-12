@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="simprints_blue">#00B3D1</color>
-    <color name="simprints_blue_dark">#009CB6</color>
+    <color name="simprints_blue">#01FF10</color>
+    <color name="simprints_blue_dark">#276627</color>
 
     <color name="simprints_green_light">#40C057</color>
     <color name="simprints_green">#2B9962</color>
@@ -31,7 +31,7 @@
     <color name="simprints_text_black">#DE000000</color>
     <color name="simprints_text_grey">#99000000</color>
     <color name="simprints_text_grey_light">#66000000</color>
-    <color name="simprints_text_blue">#DE00B3D1</color>
+    <color name="simprints_text_blue">#DE01FF10</color>
     <color name="simprints_text_orange">#DEFF7C00</color>
 
 </resources>

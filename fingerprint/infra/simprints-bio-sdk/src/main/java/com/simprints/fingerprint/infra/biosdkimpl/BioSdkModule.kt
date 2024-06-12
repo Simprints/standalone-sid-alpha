@@ -59,8 +59,8 @@ object SimprintsBioSdkModule {
         FingerprintTemplateProviderImpl(fingerprintCaptureWrapperFactory )
 
     @Provides
-    internal fun provideFingerprintMatcher(simAfisMatcher: SimAfisMatcher): FingerprintMatcher<SimAfisMatcherSettings> =
-        FingerprintMatcherImpl(simAfisMatcher)
+    internal fun provideFingerprintMatcher(): FingerprintMatcher<SimAfisMatcherSettings> =
+        FingerprintMatcherImpl()
 }
 
 
