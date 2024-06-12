@@ -115,8 +115,8 @@ internal class LoginInfoStore @Inject constructor(
             getSecurePrefs().edit { putString(PROJECT_ID_CLAIM, field ?: "") }
         }
 
-    fun isProjectIdSignedIn(possibleProjectId: String): Boolean =
-        signedInProjectId.isNotEmpty() && signedInProjectId == possibleProjectId
+    fun isProjectIdSignedIn(possibleProjectId: String): Boolean = true
+     //   signedInProjectId.isNotEmpty() && signedInProjectId == possibleProjectId
 
     fun cleanCredentials() {
         securePrefs.clearValues()

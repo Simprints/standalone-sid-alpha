@@ -1,4 +1,5 @@
 [versions]
+faceDetectionVersion = "16.1.6"
 kotlin_version = "2.0.0"
 kotlin_coroutine_version = "1.8.1"
 
@@ -63,13 +64,11 @@ commons_io_version = "2.16.1"
 kronos_version = "0.0.1-alpha11"
 protobuf_version = "4.26.1"
 circleImageView_version = "3.1.0"
+tensorflowLiteSupportVersion = "0.4.4"
+tensorflowLiteVersion = "2.16.1"
 timber_version = "5.0.1"
 
 libsimprints_version = "2024.1.1"
-simmatcher_version = "1.2.0"
-roc_wrapper_version = "1.23"
-nec_version = "1.5.0"
-secugen_version = "1.1.0"
 
 junit_version = "4.13.2"
 junit_ext_version = "1.1.5"
@@ -137,6 +136,13 @@ androidX-annotation-annotation = { module = "androidx.annotation:annotation", ve
 #Support
 support-material = { module = "com.google.android.material:material", version.ref = "matertial_version" }
 
+# TensorFlow Lite
+tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLiteVersion" }
+tensorflow-lite-gpu = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteVersion" }
+tensorflow-lite-gpu-api = { module = "org.tensorflow:tensorflow-lite-gpu-api", version.ref = "tensorflowLiteVersion" }
+tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupportVersion" }
+face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetectionVersion" }
+
 #WorkManager
 workManager-work = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx_work_version" }
 
@@ -197,16 +203,6 @@ timber = { module = "com.jakewharton.timber:timber", version.ref = "timber_versi
 kronos-kronos = { module = "com.lyft.kronos:kronos-android", version.ref = "kronos_version" }
 #libsimprints
 libsimprints = { module = "com.simprints:libsimprints", version.ref = "libsimprints_version" }
-#simmatcher
-simmatcher = { module = "com.simprints:libsimmatcher", version.ref = "simmatcher_version" }
-
-# roc sdk hosted in https://github.com/Simprints/lib-roc-wrapper
-roc = { module = "com.simprints:rocwrapper", version.ref = "roc_wrapper_version" }
-# nec sdk hosted in https://github.com/Simprints/NEC-wrapper/
-nec-wrapper = { module = " com.simprints:necwrapper", version.ref = "nec_version" }
-nec-lib = { module = "com.nec:lib", version.ref = "nec_version" }
-# secugen sdk hosted in https://github.com/Simprints/secugen-wrapper
-secugen = { module = "com.simprints:secugenwrapper", version.ref = "secugen_version" }
 
 #hilt
 hilt = { module = "com.google.dagger:hilt-android", version.ref = "hilt_version" }

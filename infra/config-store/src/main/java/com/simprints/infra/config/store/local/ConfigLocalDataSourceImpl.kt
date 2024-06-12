@@ -2,6 +2,7 @@ package com.simprints.infra.config.store.local
 
 import androidx.datastore.core.DataStore
 import com.simprints.core.tools.utils.LanguageHelper
+import com.simprints.infra.authstore.AuthStore
 import com.simprints.infra.config.store.AbsolutePath
 import com.simprints.infra.config.store.local.models.ProtoDeviceConfiguration
 import com.simprints.infra.config.store.local.models.ProtoProject
@@ -13,8 +14,7 @@ import com.simprints.infra.config.store.models.DecisionPolicy
 import com.simprints.infra.config.store.models.DeviceConfiguration
 import com.simprints.infra.config.store.models.DownSynchronizationConfiguration
 import com.simprints.infra.config.store.models.DownSynchronizationConfiguration.Companion.DEFAULT_DOWN_SYNC_MAX_AGE
-import com.simprints.infra.config.store.models.Finger
-import com.simprints.infra.config.store.models.FingerprintConfiguration
+import com.simprints.infra.config.store.models.FaceConfiguration
 import com.simprints.infra.config.store.models.GeneralConfiguration
 import com.simprints.infra.config.store.models.IdentificationConfiguration
 import com.simprints.infra.config.store.models.Project
@@ -22,7 +22,6 @@ import com.simprints.infra.config.store.models.ProjectConfiguration
 import com.simprints.infra.config.store.models.SettingsPasswordConfig
 import com.simprints.infra.config.store.models.SynchronizationConfiguration
 import com.simprints.infra.config.store.models.UpSynchronizationConfiguration
-import com.simprints.infra.config.store.models.Vero1Configuration
 import kotlinx.coroutines.flow.first
 import java.io.File
 import javax.inject.Inject
@@ -126,38 +125,24 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
 
         val defaultProjectConfiguration: ProtoProjectConfiguration =
             ProjectConfiguration(
-                projectId = "",
+                projectId = AuthStore.DEFAULT_PROJECT_ID,
                 updatedAt = "",
                 general = GeneralConfiguration(
-                    modalities = listOf(GeneralConfiguration.Modality.FINGERPRINT),
+                    modalities = listOf(GeneralConfiguration.Modality.FACE),
                     languageOptions = listOf(),
                     defaultLanguage = "en",
                     collectLocation = true,
                     duplicateBiometricEnrolmentCheck = false,
                     settingsPassword = SettingsPasswordConfig.NotSet,
                 ),
-                face = null,
-                fingerprint = FingerprintConfiguration(
+                face = FaceConfiguration(
+                    nbOfImagesToCapture = 1,
+                    qualityThreshold = 20,
+                    imageSavingStrategy = FaceConfiguration.ImageSavingStrategy.ONLY_GOOD_SCAN,
+                    decisionPolicy = DecisionPolicy(0, 50, 80)
 
-                    allowedScanners = listOf(FingerprintConfiguration.VeroGeneration.VERO_1),
-                    displayHandIcons = true,
-                    allowedSDKs = listOf(FingerprintConfiguration.BioSdk.SECUGEN_SIM_MATCHER),
-                    secugenSimMatcher = FingerprintConfiguration.FingerprintSdkConfiguration(
-                        fingersToCapture = listOf(
-                            Finger.LEFT_THUMB,
-                            Finger.LEFT_INDEX_FINGER
-                        ),
-                        decisionPolicy = DecisionPolicy(
-                            0,
-                            0,
-                            700
-                        ),
-                        comparisonStrategyForVerification = FingerprintConfiguration.FingerComparisonStrategy.SAME_FINGER,
-                        vero1 = Vero1Configuration(60),
-                        vero2 = null,
-                    ),
-                    nec = null,
                 ),
+                fingerprint = null,
                 consent = ConsentConfiguration(
                     programName = "this program",
                     organizationName = "This organization",

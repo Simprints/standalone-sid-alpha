@@ -21,7 +21,6 @@ import com.simprints.feature.logincheck.usecases.StartBackgroundSyncUseCase
 import com.simprints.feature.logincheck.usecases.UpdateProjectInCurrentSessionUseCase
 import com.simprints.feature.logincheck.usecases.UpdateSessionScopePayloadUseCase
 import com.simprints.feature.logincheck.usecases.UpdateStoredUserIdUseCase
-import com.simprints.infra.config.store.models.ProjectState
 import com.simprints.infra.config.sync.ConfigManager
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.orchestration.data.ActionRequest
@@ -131,12 +130,8 @@ class LoginCheckViewModel @Inject internal constructor(
     }
 
     private suspend fun validateProjectAndProceed(actionRequest: ActionRequest) {
-        when (configManager.getProject(actionRequest.projectId).state) {
-            ProjectState.PROJECT_PAUSED -> _showAlert.send(LoginCheckError.PROJECT_PAUSED)
-            ProjectState.PROJECT_ENDING -> _showAlert.send(LoginCheckError.PROJECT_ENDING)
-            ProjectState.PROJECT_ENDED -> startSignInAttempt(actionRequest)
-            ProjectState.RUNNING -> proceedWithAction(actionRequest)
-        }
+        proceedWithAction(actionRequest)
+
     }
 
     private suspend fun proceedWithAction(actionRequest: ActionRequest) = viewModelScope.launch {
@@ -148,7 +143,7 @@ class LoginCheckViewModel @Inject internal constructor(
             async { extractParametersForCrashReport(actionRequest) }
         )
 
-        startBackgroundSync()
+//        startBackgroundSync()
         _proceedWithAction.send(actionRequest)
     }
 
