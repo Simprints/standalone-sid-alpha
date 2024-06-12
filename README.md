@@ -1,8 +1,7 @@
 # Awesome-SID
 
 This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints/Android-Simprints-ID).
-The original Simprints-Android-ID it's not easy to use because it relies on private parts and connects to a closed backend. That's why in this new repository, I've made changes to make it easier to use.
-
+The original Simprints-Android-ID project is difficult to use because it relies on closed-source components and connects to a closed-source backend. In this new repository, I've made changes to make it more accessible by using open-source alternatives.
 ## Changes Made
 
 1. **Disable Login Flow:**
