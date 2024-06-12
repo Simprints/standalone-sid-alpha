@@ -5,7 +5,7 @@ This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints
 ## Changes Made
 
 1. **Disable Login Flow:**
-    - Set a default project ID in [`AuthStore`]( ) to bypass the login flow.
+    - Set a default project ID in `AuthStore` to bypass the login flow.
 
 2. **Remove Third-Party Dependencies:**
     - Removed dependencies hosted in private repositories:
@@ -31,4 +31,4 @@ This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints
 
 For more details, visit the original [Simprints-Android-ID repository](https://github.com/Simprints/Android-Simprints-ID).
 
-[Full Diff Between Awesome-SID and the Parent Repository](https://github.com/Simprints/Android-Simprints-ID/compare/main...meladRaouf:Awesome-SID:main)
+[Full Diff Between Awesome-SID and Simprints-Android-ID repository](https://github.com/Simprints/Android-Simprints-ID/compare/main...meladRaouf:Awesome-SID:main)
