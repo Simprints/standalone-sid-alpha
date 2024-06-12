@@ -1,6 +1,7 @@
 # Awesome-SID
 
-This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints/Android-Simprints-ID). It contains several modifications
+This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints/Android-Simprints-ID).
+The original Simprints-Android-ID it's not easy to use because it relies on private parts and connects to a closed backend. That's why in this new repository, I've made changes to make it easier to use.
 
 ## Changes Made
 
