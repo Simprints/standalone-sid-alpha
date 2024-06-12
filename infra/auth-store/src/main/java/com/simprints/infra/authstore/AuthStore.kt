@@ -36,4 +36,7 @@ interface AuthStore {
     fun getLegacyAppFallback(): FirebaseApp
 
     suspend fun <T : SimRemoteInterface> buildClient(remoteInterface: KClass<T>): SimNetwork.SimApiClient<T>
+    companion object{
+        const val DEFAULT_PROJECT_ID = "localProjectId"
+    }
 }

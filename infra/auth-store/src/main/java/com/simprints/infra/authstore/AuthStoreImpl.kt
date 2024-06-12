@@ -2,6 +2,7 @@ package com.simprints.infra.authstore
 
 import com.google.firebase.FirebaseApp
 import com.simprints.core.domain.tokenization.TokenizableString
+import com.simprints.infra.authstore.AuthStore.Companion.DEFAULT_PROJECT_ID
 import com.simprints.infra.authstore.db.FirebaseAuthManager
 import com.simprints.infra.authstore.domain.LoginInfoStore
 import com.simprints.infra.authstore.domain.models.Token
@@ -24,11 +25,8 @@ internal class AuthStoreImpl @Inject constructor(
             loginInfoStore.signedInUserId = value
         }
 
-    override var signedInProjectId: String
-        get() = loginInfoStore.signedInProjectId
-        set(value) {
-            loginInfoStore.signedInProjectId = value
-        }
+    override var signedInProjectId: String= DEFAULT_PROJECT_ID
+
 
     override fun isProjectIdSignedIn(possibleProjectId: String): Boolean =
         loginInfoStore.isProjectIdSignedIn(possibleProjectId)
