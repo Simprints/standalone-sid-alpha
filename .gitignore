@@ -29,9 +29,6 @@ __pycache__/
 # Test Log Files
 testing/logs/
 
-# Google Play Services
-google-services.json
-
 # Built application files
 *.ap_
 *.apk
@@ -54,10 +51,6 @@ proguard/
 
 # Android Studio captures folder
 captures/
-
-# Keystore files
-*.jks
-*.keystore
 
 # Freeline
 freeline.py

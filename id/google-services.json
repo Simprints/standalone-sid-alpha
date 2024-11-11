@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "890092571399",
+    "project_id": "lego-day-sid",
+    "storage_bucket": "lego-day-sid.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890092571399:android:8ecd1c442688360fb053a2",
+        "android_client_info": {
+          "package_name": "com.simprints.id"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDu-egMQyA65lVuiic46L2LROE4kO5T74M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
