@@ -30,5 +30,3 @@ The original Simprints-Android-ID project depends on closed-source components an
 ---
 
 For more details, visit the original [Simprints-Android-ID repository](https://github.com/Simprints/Android-Simprints-ID).
-
-[Full Diff Between Awesome-SID and Simprints-Android-ID repository](https://github.com/Simprints/Android-Simprints-ID/compare/main...meladRaouf:Awesome-SID:main)
