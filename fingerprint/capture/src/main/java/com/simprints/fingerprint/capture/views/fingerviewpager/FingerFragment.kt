@@ -6,7 +6,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import com.simprints.core.domain.fingerprint.IFingerIdentifier
 import com.simprints.fingerprint.capture.R
 import com.simprints.fingerprint.capture.databinding.FragmentFingerBinding
@@ -30,7 +30,7 @@ import dagger.hilt.android.AndroidEntryPoint
 internal class FingerFragment : Fragment(R.layout.fragment_finger) {
 
     private val binding by viewBinding(FragmentFingerBinding::bind)
-    private val vm: FingerprintCaptureViewModel by activityViewModels()
+    private val vm: FingerprintCaptureViewModel by viewModels(ownerProducer = { requireParentFragment() })
 
     private lateinit var fingerId: IFingerIdentifier
 
@@ -141,12 +141,12 @@ internal class FingerFragment : Fragment(R.layout.fragment_finger) {
                         )
                     }
 
-                    is CaptureState.Scanning -> startTimeoutBar()
-                    is CaptureState.TransferringImage -> {
+                    is CaptureState.ScanProcess.Scanning -> startTimeoutBar()
+                    is CaptureState.ScanProcess.TransferringImage -> {
                         //Do nothing
                     }
 
-                    is CaptureState.NotDetected -> {
+                    is CaptureState.ScanProcess.NotDetected -> {
                         handleCancelled()
                         progressBar.progressDrawable = ContextCompat.getDrawable(
                             requireContext(),
@@ -154,7 +154,7 @@ internal class FingerFragment : Fragment(R.layout.fragment_finger) {
                         )
                     }
 
-                    is CaptureState.Collected -> if (fingerState.scanResult.isGoodScan()) {
+                    is CaptureState.ScanProcess.Collected -> if (fingerState.scanResult.isGoodScan()) {
                         handleCancelled()
                         progressBar.progressDrawable = ContextCompat.getDrawable(
                             requireContext(),

@@ -1,7 +1,10 @@
 package com.simprints.infra.config.store.local.models
 
 import com.simprints.infra.config.store.exceptions.InvalidProtobufEnumException
+import com.simprints.infra.config.store.local.models.ProtoFingerprintConfiguration.ProtoMaxCaptureAttempts
+import com.simprints.infra.config.store.models.AgeGroup
 import com.simprints.infra.config.store.models.FingerprintConfiguration
+import com.simprints.infra.config.store.models.MaxCaptureAttempts
 
 internal fun FingerprintConfiguration.toProto(): ProtoFingerprintConfiguration =
     ProtoFingerprintConfiguration.newBuilder()
@@ -19,11 +22,14 @@ internal fun FingerprintConfiguration.FingerprintSdkConfiguration.toProto() =
         .addAllFingersToCapture(fingersToCapture.map { it.toProto() })
         .setDecisionPolicy(decisionPolicy.toProto())
         .setComparisonStrategyForVerification(comparisonStrategyForVerification.toProto())
+        .setAllowedAgeRange(allowedAgeRange.toProto())
         .also {
             if (vero1 != null) it.vero1 = vero1.toProto()
             if (vero2 != null) it.vero2 = vero2.toProto()
-        }
-        .build()
+            if (verificationMatchThreshold != null) it.verificationMatchThreshold = verificationMatchThreshold
+            if (maxCaptureAttempts != null) it.maxCaptureAttempts = maxCaptureAttempts.toProto()
+        }.build()
+
 
 internal fun FingerprintConfiguration.VeroGeneration.toProto() = when (this) {
     FingerprintConfiguration.VeroGeneration.VERO_1 -> ProtoFingerprintConfiguration.VeroGeneration.VERO_1
@@ -39,6 +45,8 @@ internal fun FingerprintConfiguration.FingerComparisonStrategy.toProto() = when 
     FingerprintConfiguration.FingerComparisonStrategy.SAME_FINGER -> ProtoFingerprintConfiguration.FingerComparisonStrategy.SAME_FINGER
     FingerprintConfiguration.FingerComparisonStrategy.CROSS_FINGER_USING_MEAN_OF_MAX -> ProtoFingerprintConfiguration.FingerComparisonStrategy.CROSS_FINGER_USING_MEAN_OF_MAX
 }
+
+internal fun MaxCaptureAttempts.toProto() = ProtoMaxCaptureAttempts.newBuilder().setNoFingerDetected(noFingerDetected).build()
 
 
 internal fun ProtoFingerprintConfiguration.toDomain() =
@@ -59,6 +67,7 @@ internal fun ProtoFingerprintConfiguration.toDomainOld() = FingerprintConfigurat
         comparisonStrategyForVerification = comparisonStrategyForVerification.toDomain(),
         vero1 = vero1.toDomain(),
         vero2 = vero2.toDomain(),
+        maxCaptureAttempts = null
     ),
     nec = null,
     displayHandIcons = displayHandIcons,
@@ -82,13 +91,19 @@ internal fun ProtoFingerprintConfiguration.ProtoBioSdk.toDomain() = when (this) 
 
 internal fun ProtoFingerprintConfiguration.ProtoFingerprintSdkConfiguration.toDomain() =
     FingerprintConfiguration.FingerprintSdkConfiguration(
-        fingersToCaptureList.map { it.toDomain() },
-        decisionPolicy.toDomain(),
-        comparisonStrategyForVerification.toDomain(),
-        if (hasVero1()) vero1.toDomain() else null,
-        if (hasVero2()) vero2.toDomain() else null,
+        fingersToCapture = fingersToCaptureList.map { it.toDomain() },
+        decisionPolicy = decisionPolicy.toDomain(),
+        comparisonStrategyForVerification = comparisonStrategyForVerification.toDomain(),
+        vero1 = if (hasVero1()) vero1.toDomain() else null,
+        vero2 = if (hasVero2()) vero2.toDomain() else null,
+        allowedAgeRange = if (hasAllowedAgeRange()) allowedAgeRange.toDomain() else AgeGroup(0, null),
+        verificationMatchThreshold = if (hasVerificationMatchThreshold()) verificationMatchThreshold else null,
+        maxCaptureAttempts = maxCaptureAttempts.toDomain()
     )
 
+internal fun ProtoFingerprintConfiguration.ProtoMaxCaptureAttempts.toDomain() = MaxCaptureAttempts(
+    noFingerDetected = noFingerDetected
+)
 
 internal fun ProtoFingerprintConfiguration.VeroGeneration.toDomain() = when (this) {
     ProtoFingerprintConfiguration.VeroGeneration.VERO_1 -> FingerprintConfiguration.VeroGeneration.VERO_1
@@ -105,3 +120,12 @@ internal fun ProtoFingerprintConfiguration.FingerComparisonStrategy.toDomain() =
         "invalid FingerComparisonStrategy $name"
     )
 }
+
+internal fun ProtoAllowedAgeRange.toDomain() = AgeGroup(startInclusive, if (hasEndExclusive()) endExclusive else null)
+
+internal fun AgeGroup.toProto() = ProtoAllowedAgeRange.newBuilder()
+    .also {
+        it.setStartInclusive(startInclusive)
+        if (endExclusive != null) it.setEndExclusive(endExclusive)
+    }
+    .build()

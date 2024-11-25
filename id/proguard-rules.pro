@@ -58,8 +58,19 @@
 #net.zetetic:android-database-sqlcipher
 -keep class net.sqlcipher.** { *; }
 
-# Do not obfuscate names in out packages`
--keepnames class com.simprints.** { *; }
+# Dont warn about the missing files during the obfuscation
+-dontwarn com.simprints.**
+
+# Do not obfuscate names in simprints package
+-keep class com.simprints.** { *; }
 # Keep all marshallable classes as-is
 -keep class com.simprints.** extends java.io.Serializable { *; }
 -keep class com.simprints.** extends android.os.Parcelable { *; }
+
+-keep class retrofit2.** { *; }
+-keep interface retrofit2.** { *; }
+
+
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}

@@ -1,6 +1,7 @@
 package com.simprints.infra.config.store.remote.models
 
 import androidx.annotation.Keep
+import com.simprints.infra.config.store.models.AgeGroup
 import com.simprints.infra.config.store.models.FingerprintConfiguration
 import com.simprints.infra.config.store.models.Finger as DomainFingerprint
 
@@ -27,15 +28,20 @@ internal data class ApiFingerprintConfiguration(
         val decisionPolicy: ApiDecisionPolicy,
         val comparisonStrategyForVerification: FingerComparisonStrategy,
         val vero1: ApiVero1Configuration? = null,
-        val vero2: ApiVero2Configuration? = null
+        val vero2: ApiVero2Configuration? = null,
+        val allowedAgeRange: ApiAllowedAgeRange? = null,
+        val verificationMatchThreshold: Float? = null,
+        val maxCaptureAttempts: ApiMaxCaptureAttempts? = null
     ) {
         fun toDomain() = FingerprintConfiguration.FingerprintSdkConfiguration(
-            fingersToCapture.map { it.toDomain() },
-            decisionPolicy.toDomain(),
-            comparisonStrategyForVerification.toDomain(),
-            vero1?.toDomain(),
-            vero2?.toDomain()
-
+            fingersToCapture = fingersToCapture.map { it.toDomain() },
+            decisionPolicy = decisionPolicy.toDomain(),
+            comparisonStrategyForVerification = comparisonStrategyForVerification.toDomain(),
+            vero1 = vero1?.toDomain(),
+            vero2 = vero2?.toDomain(),
+            allowedAgeRange = allowedAgeRange?.toDomain() ?: AgeGroup(0, null),
+            verificationMatchThreshold = verificationMatchThreshold,
+            maxCaptureAttempts = maxCaptureAttempts?.toDomain()
         )
     }
 

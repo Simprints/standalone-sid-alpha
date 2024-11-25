@@ -22,7 +22,7 @@
     <string name="consent_parental_share_data_no">Simprints, a UK-based nonprofit, will have access to their %1$s and current location.</string>
     <string name="consent_parental_share_data_yes">%1$s and Simprints, a UK-based nonprofit, will have access to their %2$s and current location.</string>
     <string name="consent_parental_privacy_rights">If you accept, you may withdraw your permission at any time and ask for your child\'s data to be erased.</string>
-    <string name="consent_parental_confirmation">May I use your child\'s %1$s? Please say \"I accept\", \"I decline\", or \"I have questions.\"</string>
+    <string name="consent_parental_confirmation">May I %1$s? Please say \"I accept\", \"I decline\", or \"I have questions.\"</string>
     <string name="consent_biometrics_general_fingerprint">use your fingerprints</string>
     <string name="consent_biometric_general_face">take photographs of your face</string>
     <string name="consent_biometrics_access_fingerprint">fingerprint information</string>
@@ -66,6 +66,8 @@
     <string name="exit_form_reason_scanner_not_working">Scanner not working</string>
     <string name="exit_form_reason_person_not_present">Person not present</string>
     <string name="exit_form_reason_too_young">Too young</string>
+    <string name="exit_form_reason_wrong_age_group_selected">Wrong age group selected</string>
+    <string name="exit_form_reason_uncooperative_child">Uncooperative child</string>
     <string name="exit_form_reason_other">Other</string>
 
     <!-- Fetch subject -->
@@ -120,6 +122,8 @@
         <item quantity="one">%d match</item>
         <item quantity="other">%d matches</item>
     </plurals>
+    <string name="matcher_missing_access_permission">Permission is required to access data provided by the Data Collector application</string>
+    <string name="matcher_grant_permission_action">Grant permission</string>
 
     <!-- Orchestrator -->
     <string name="orchestrator_generic_error_title">Error occurred</string>
@@ -180,7 +184,8 @@
     <string name="face_capture_error_look_straight">Make sure the person is looking straight at the camera</string>
     <string name="face_capture_begin_button">Tap to capture</string>
     <string name="face_capture_prep_begin_button_capturing">Capturing…</string>
-    <string name="face_capturing_permission_denied">Please allow camera permission</string>
+    <string name="face_capture_permission_denied">Please grant the camera permission</string>
+    <string name="face_capture_permission_action">Grant permission</string>
     <string name="face_capture_hold">Hold the position…</string>
     <string name="face_capture_successfully_title">Face has been successfully captured.</string>
     <string name="face_capture_confirmation_title">Confirmation</string>
@@ -360,12 +365,16 @@
     <string name="dashboard_preference_select_modules_title">Select modules</string>
     <string name="dashboard_preference_app_version_title">App Version</string>
     <string name="dashboard_preference_sync_information_title">Sync Information</string>
+    <string name="dashboard_preference_update_config_title">Update configuration</string>
     <string name="dashboard_preference_scanner_version_title">Scanner Version</string>
     <string name="dashboard_preference_device_id_title">Device ID</string>
     <string name="dashboard_preference_summary_settings_fingers">View the fingers that will be scanned</string>
     <string name="dashboard_preference_summary_sync_information">Further details on sync</string>
+    <string name="dashboard_preference_summary_update_config">Refresh device and project configuration</string>
+    <string name="dashboard_preference_summary_enable_audio_on_scan_complete">Enable or disable audio alerts when a fingerprint scan is completed, notifying the user to remove their hand from the scanner.</string>
     <string name="dashboard_preference_copied_to_clipboard">Copied to clipboard</string>
-
+    <string name="dashboard_preference_update_config_scheduled">Configuration update started</string>
+    <string name="dashboard_preference_enable_audio_on_scan_complete">Audio on Fingerprint Scan Completion</string>
 
     <!-- Dashboard - Sync info -->
     <string name="dashboard_sync_info_title">Sync Information</string>
@@ -434,5 +443,19 @@
     <string name="id_pool_validation_pool_empty_message">There are no records on the device</string>
     <string name="id_pool_validation_action_close">Close</string>
     <string name="id_pool_validation_action_sync">Sync and retry</string>
+    <string name="id_pool_validation_action_continue">Proceed with capture</string>
+
+    <!-- Age group selection -->
+    <string name="age_group_selection_title">Select Subject\'s Age Group</string>
+    <string name="age_group_selection_age_range_to">to</string>
+    <string name="age_group_selection_age_range_and_above">and above</string>
+    <plurals name="age_group_selection_age_in_months">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+    <plurals name="age_group_selection_age_in_years">
+        <item quantity="one">%d year</item>
+        <item quantity="other">%d years</item>
+    </plurals>
 
 </resources>

@@ -91,8 +91,9 @@ include(
 // Face modality modules
 include(
     ":face:capture",
-    ":face:infra:face-bio-sdk",
-    ":face:infra:facenet-wrapper",
+    ":face:infra:base-bio-sdk",
+    ":face:infra:bio-sdk-resolver",
+    ":face:infra:facenet-v3",
 )
 
 // Feature modules
@@ -110,7 +111,8 @@ include(
     ":feature:consent",
     ":feature:setup",
     ":feature:matcher",
-    ":feature:validate-subject-pool"
+    ":feature:validate-subject-pool",
+    ":feature:select-subject-age-group",
 )
 
 // Infra modules

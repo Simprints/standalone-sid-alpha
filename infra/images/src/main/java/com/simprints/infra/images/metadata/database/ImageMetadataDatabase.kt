@@ -1,8 +1,10 @@
 package com.simprints.infra.images.metadata.database
 
 import android.content.Context
-import androidx.room.*
-import com.google.errorprone.annotations.Keep
+import androidx.annotation.Keep
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
 
 @Database(
     entities = [DbImageMetadata::class],

@@ -6,7 +6,7 @@ import org.junit.Test
 class FingerprintConfigurationTest {
 
     @Test
-    fun `should retrieve secugenSimMatcher from bioSdkConfiguration if secugenSimMatcher not null  `() {
+    fun `should retrieve SecugenSimMatcher's configuration  when SECUGEN_SIM_MATCHER is requested `() {
 
         val fingerprintConfiguration = FingerprintConfiguration(
             allowedScanners = listOf(FingerprintConfiguration.VeroGeneration.VERO_1),
@@ -18,15 +18,16 @@ class FingerprintConfigurationTest {
                 comparisonStrategyForVerification = FingerprintConfiguration.FingerComparisonStrategy.SAME_FINGER,
                 vero1 = Vero1Configuration(60),
                 vero2 = null,
+                maxCaptureAttempts = MaxCaptureAttempts(noFingerDetected = 17)
             ),
             nec = null,
         )
-        Truth.assertThat(fingerprintConfiguration.bioSdkConfiguration)
+        Truth.assertThat(fingerprintConfiguration.getSdkConfiguration(FingerprintConfiguration.BioSdk.SECUGEN_SIM_MATCHER))
             .isEqualTo(fingerprintConfiguration.secugenSimMatcher)
     }
 
     @Test
-    fun `should retrieve nec from bioSdkConfiguration if nec not null  `() {
+    fun `should retrieve NEC's configuration  when NEC is requested `() {
 
         val fingerprintConfiguration = FingerprintConfiguration(
             allowedScanners = listOf(FingerprintConfiguration.VeroGeneration.VERO_1),
@@ -39,24 +40,10 @@ class FingerprintConfigurationTest {
                 comparisonStrategyForVerification = FingerprintConfiguration.FingerComparisonStrategy.SAME_FINGER,
                 vero1 = Vero1Configuration(60),
                 vero2 = null,
+                maxCaptureAttempts = MaxCaptureAttempts(noFingerDetected = 17)
             ),
         )
-        Truth.assertThat(fingerprintConfiguration.bioSdkConfiguration)
+        Truth.assertThat(fingerprintConfiguration.getSdkConfiguration(FingerprintConfiguration.BioSdk.NEC))
             .isEqualTo(fingerprintConfiguration.nec)
     }
-
-    @Test(expected = IllegalStateException::class)
-    fun `should throw IllegalStateException if nec and secugenSimMatcher are  null  `() {
-
-        val fingerprintConfiguration = FingerprintConfiguration(
-            allowedScanners = listOf(FingerprintConfiguration.VeroGeneration.VERO_1),
-            allowedSDKs = listOf(FingerprintConfiguration.BioSdk.NEC),
-            displayHandIcons = true,
-            secugenSimMatcher = null,
-            nec = null,
-        )
-        fingerprintConfiguration.bioSdkConfiguration
-    }
-
-
 }
