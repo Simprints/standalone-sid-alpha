@@ -1,7 +1,7 @@
-# Standalone-SID
+# Sandalone SID Alpha
 
 This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints/Android-Simprints-ID).
-The original Simprints-Android-ID project is difficult to use because it relies on closed-source components and connects to a closed-source backend. In this new repository, I've made changes to make it more accessible by using open-source alternatives.
+The original Simprints-Android-ID project depends on closed-source components and connects to a closed-source backend. In this repository, We've made it more accessible by incorporating open-source alternatives.
 ## Changes Made
 
 1. **Disable Login Flow:**
@@ -30,5 +30,3 @@ The original Simprints-Android-ID project is difficult to use because it relies 
 ---
 
 For more details, visit the original [Simprints-Android-ID repository](https://github.com/Simprints/Android-Simprints-ID).
-
-[Full Diff Between Awesome-SID and Simprints-Android-ID repository](https://github.com/Simprints/Android-Simprints-ID/compare/main...meladRaouf:Awesome-SID:main)
