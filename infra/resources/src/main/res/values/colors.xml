@@ -32,7 +32,7 @@
     <color name="simprints_text_black">#DE000000</color>
     <color name="simprints_text_grey">#99000000</color>
     <color name="simprints_text_grey_light">#66000000</color>
-    <color name="simprints_text_blue">#DE01FF10</color>
+    <color name="simprints_text_blue">#DE018000</color>
     <color name="simprints_text_orange">#DEFF7C00</color>
 
 </resources>

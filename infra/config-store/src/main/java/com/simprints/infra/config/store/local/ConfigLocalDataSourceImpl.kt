@@ -130,7 +130,7 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                 updatedAt = "",
                 general = GeneralConfiguration(
                     modalities = listOf(GeneralConfiguration.Modality.FACE),
-                    matchingModalities = listOf(GeneralConfiguration.Modality.FINGERPRINT),
+                    matchingModalities = listOf(GeneralConfiguration.Modality.FACE),
                     languageOptions = listOf(),
                     defaultLanguage = "en",
                     collectLocation = true,

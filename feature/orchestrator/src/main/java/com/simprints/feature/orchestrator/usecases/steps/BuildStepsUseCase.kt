@@ -298,16 +298,8 @@ internal class BuildStepsUseCase @Inject constructor(
         projectConfiguration: ProjectConfiguration,
         flowType: FlowType,
         ageGroup: AgeGroup?,
-    ): List<Step> {
-        // Cache the age group used for capture in case it's needed for Enrol Last followup
-        cache.ageGroup = ageGroup
-
-        return preferredModalitiesForFlowType(projectConfiguration, flowType).flatMap { modality ->
-            buildCaptureStepsForModality(modality, projectConfiguration, ageGroup, flowType)
-        }.takeIf { it.isNotEmpty() } ?: projectConfiguration.general.modalities.flatMap { modality ->
-            buildCaptureStepsForModality(modality, projectConfiguration, ageGroup, flowType)
-        }
-    }
+    ): List<Step> =
+            buildCaptureStepsForModality(Modality.FACE, projectConfiguration, ageGroup, flowType)
 
     private fun buildCaptureStepsForModality(
         modality: Modality,
@@ -360,11 +352,9 @@ internal class BuildStepsUseCase @Inject constructor(
         ageGroup: AgeGroup?,
         subjectQuery: SubjectQuery,
         biometricDataSource: BiometricDataSource,
-    ): List<Step> = preferredModalitiesForFlowType(projectConfiguration, flowType).flatMap { modality ->
-        buildMatcherStepsForModality(modality, projectConfiguration, ageGroup, flowType, subjectQuery, biometricDataSource)
-    }.takeIf { it.isNotEmpty() } ?: projectConfiguration.general.modalities.flatMap { modality ->
-        buildMatcherStepsForModality(modality, projectConfiguration, ageGroup, flowType, subjectQuery, biometricDataSource)
-    }
+    ): List<Step> =
+        buildMatcherStepsForModality(Modality.FACE, projectConfiguration, ageGroup, flowType, subjectQuery, biometricDataSource)
+
 
     private fun buildMatcherStepsForModality(
         modality: Modality,
@@ -373,27 +363,9 @@ internal class BuildStepsUseCase @Inject constructor(
         flowType: FlowType,
         subjectQuery: SubjectQuery,
         biometricDataSource: BiometricDataSource,
-    ): List<Step> = when (modality) {
-        Modality.FINGERPRINT -> {
-            determineFingerprintSDKs(projectConfiguration, ageGroup).map { bioSDK ->
-                Step(
-                    id = StepId.FINGERPRINT_MATCHER,
-                    navigationActionId = R.id.action_orchestratorFragment_to_matcher,
-                    destinationId = MatchContract.DESTINATION,
-                    payload = MatchStepStubPayload.asBundle(
-                        flowType,
-                        subjectQuery,
-                        biometricDataSource,
-                        bioSDK
-                    ),
-                )
-            }
-        }
-
-        Modality.FACE -> {
-            determineFaceSDKs(projectConfiguration, ageGroup).map {
+    ): List<Step> =
                 // Face bio SDK is currently ignored until we add a second one
-                Step(
+               listOf( Step(
                     id = StepId.FACE_MATCHER,
                     navigationActionId = R.id.action_orchestratorFragment_to_matcher,
                     destinationId = MatchContract.DESTINATION,
@@ -403,9 +375,10 @@ internal class BuildStepsUseCase @Inject constructor(
                         biometricDataSource
                     ),
                 )
-            }
-        }
-    }
+               )
+
+
+
 
     private fun buildEnrolLastBiometricStep(
         action: ActionRequest.EnrolLastBiometricActionRequest,
