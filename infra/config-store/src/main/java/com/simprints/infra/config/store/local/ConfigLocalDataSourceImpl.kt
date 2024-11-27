@@ -130,6 +130,7 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                 updatedAt = "",
                 general = GeneralConfiguration(
                     modalities = listOf(GeneralConfiguration.Modality.FACE),
+                    matchingModalities = listOf(GeneralConfiguration.Modality.FINGERPRINT),
                     languageOptions = listOf(),
                     defaultLanguage = "en",
                     collectLocation = true,
@@ -182,6 +183,7 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                         maxAge = DEFAULT_DOWN_SYNC_MAX_AGE,
                     ),
                 ),
+                custom = null,
             ).toProto()
         val defaultDeviceConfiguration: ProtoDeviceConfiguration = DeviceConfiguration(
             language = "",
