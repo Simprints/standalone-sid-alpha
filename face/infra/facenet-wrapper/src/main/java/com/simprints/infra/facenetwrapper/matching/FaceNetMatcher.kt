@@ -1,7 +1,7 @@
 package com.simprints.infra.facenetwrapper.matching
 
 import com.simprints.core.ExcludedFromGeneratedTestCoverageReports
-import com.simprints.infra.facebiosdk.matching.FaceMatcher
+import com.simprints.face.infra.basebiosdk.matching.FaceMatcher
 import com.simprints.infra.mlkitwrapper.tools.cosineSimilarity
 import com.simprints.infra.mlkitwrapper.tools.toFloats
 import javax.inject.Inject
@@ -10,7 +10,8 @@ class FaceNetMatcher @Inject constructor() : FaceMatcher() {
     override val matcherName
         get() = "RANK_ONE"
 
-
+    override val supportedTemplateFormat: String
+        get() = "FACENET"
     // Ignore this method from test coverage calculations
     // because it uses jni native code which is hard to test
     @ExcludedFromGeneratedTestCoverageReports(

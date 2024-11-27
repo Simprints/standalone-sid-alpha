@@ -132,7 +132,6 @@ class LoginCheckViewModel @Inject internal constructor(
 
     private suspend fun validateProjectAndProceed(actionRequest: ActionRequest) {
         proceedWithAction(actionRequest)
-
     }
 
     private suspend fun proceedWithAction(actionRequest: ActionRequest) = viewModelScope.launch {
@@ -143,7 +142,6 @@ class LoginCheckViewModel @Inject internal constructor(
             async { addAuthorizationEvent(actionRequest, true) },
             async { extractParametersForCrashReport(actionRequest) }
         )
-
 //        startBackgroundSync()
         _proceedWithAction.send(actionRequest)
     }

@@ -3,7 +3,7 @@ package com.simprints.infra.facenetwrapper.initialization
 import android.app.Activity
 import android.content.Context
 import com.simprints.core.ExcludedFromGeneratedTestCoverageReports
-import com.simprints.infra.facebiosdk.initialization.FaceBioSdkInitializer
+import com.simprints.face.infra.basebiosdk.initialization.FaceBioSdkInitializer
 import com.simprints.infra.facenetwrapper.model.FaceNetModel
 import com.simprints.infra.facenetwrapper.model.Models
 import dagger.hilt.android.qualifiers.ApplicationContext

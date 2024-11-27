@@ -87,52 +87,11 @@ internal class FaceCaptureViewModel @Inject constructor(
     }
 
     fun initFaceBioSdk(activity: Activity) = viewModelScope.launch {
-        val licenseVendor = Vendor.RankOne
-        val license = licenseRepository.getCachedLicense(licenseVendor)
-        var licenseStatus = license.determineLicenseStatus()
-        if (licenseStatus == LicenseStatus.VALID) {
-            licenseStatus = initialize(activity, license!!)
-        }
 
-        // In some cases license is invalidated on initialisation attempt
-        if (licenseStatus != LicenseStatus.VALID) {
-            Simber.tag(CrashReportTag.LICENSE.name).i("Face license is $licenseStatus - attempting download")
-            licenseStatus = refreshLicenceAndRetry(
-                activity,
-                licenseVendor,
-                LicenseVersion(configManager.getProjectConfiguration().face?.rankOne?.version.orEmpty())
-            )
-        }
-        // Still invalid after attempted refresh
-        if (licenseStatus != LicenseStatus.VALID) {
-            Simber.tag(CrashReportTag.LICENSE.name).i("Face license is $licenseStatus")
-            licenseRepository.deleteCachedLicense(Vendor.RankOne)
-            _invalidLicense.send()
-        }
-        saveLicenseCheckEvent(licenseVendor, licenseStatus)
-    }
-
-    private suspend fun initialize(activity: Activity, license: License): LicenseStatus {
         val initializer = resolveFaceBioSdk().initializer
-        if (!initializer.tryInitWithLicense(activity, license.data)) {
-            // License is valid but the SDK failed to initialize
-            // This is should reported as an error
-            return LicenseStatus.ERROR
-        }
-        return LicenseStatus.VALID
-    }
+        !initializer.tryInitWithLicense(activity, "")
 
-    private suspend fun refreshLicenceAndRetry(activity: Activity, licenseVendor: Vendor, licenseVersion: LicenseVersion) = licenseRepository
-        .redownloadLicence(authStore.signedInProjectId, deviceID, licenseVendor,licenseVersion)
-        .map { state ->
-            when (state) {
-                is LicenseState.FinishedWithSuccess -> initialize(activity, state.license)
-                is LicenseState.FinishedWithBackendMaintenanceError, is LicenseState.FinishedWithError -> LicenseStatus.MISSING
-                else -> null
-            }
-        }
-        .filterNotNull()
-        .last()
+    }
 
     fun getSampleDetection() = faceDetections.firstOrNull()
 

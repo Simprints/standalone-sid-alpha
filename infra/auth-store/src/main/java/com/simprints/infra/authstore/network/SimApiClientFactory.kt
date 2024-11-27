@@ -23,7 +23,7 @@ internal class SimApiClientFactory @Inject constructor(
             remoteInterface,
             deviceId,
             versionName,
-            firebaseAuthManager.getCurrentToken(),
+            "",
         )
     }
 }

@@ -138,11 +138,19 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                     settingsPassword = SettingsPasswordConfig.NotSet,
                 ),
                 face = FaceConfiguration(
-                    nbOfImagesToCapture = 1,
-                    qualityThreshold = 20,
-                    imageSavingStrategy = FaceConfiguration.ImageSavingStrategy.ONLY_GOOD_SCAN,
-                    decisionPolicy = DecisionPolicy(0, 50, 80)
+                    allowedSDKs = listOf(FaceConfiguration.BioSdk.RANK_ONE),
+                    rankOne = FaceConfiguration.FaceSdkConfiguration(
+                        nbOfImagesToCapture = 1,
+                        qualityThreshold = 0f,
+                        imageSavingStrategy = FaceConfiguration.ImageSavingStrategy.NEVER,
+                        decisionPolicy = DecisionPolicy(
+                           low = 0,
+                            medium = 1,
+                            high = 90,
 
+                        ),
+                        version = "1.0",
+                    ),
                 ),
                 fingerprint = null,
                 consent = ConsentConfiguration(

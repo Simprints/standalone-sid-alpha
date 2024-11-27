@@ -1,8 +1,8 @@
 package com.simprints.infra.facenetwrapper
 
-import com.simprints.infra.facebiosdk.detection.FaceDetector
-import com.simprints.infra.facebiosdk.initialization.FaceBioSdkInitializer
-import com.simprints.infra.facebiosdk.matching.FaceMatcher
+import com.simprints.face.infra.basebiosdk.detection.FaceDetector
+import com.simprints.face.infra.basebiosdk.initialization.FaceBioSdkInitializer
+import com.simprints.face.infra.basebiosdk.matching.FaceMatcher
 import com.simprints.infra.facenetwrapper.detection.FaceNetDetector
 import com.simprints.infra.facenetwrapper.initialization.FaceNetInitializer
 import com.simprints.infra.facenetwrapper.matching.FaceNetMatcher

@@ -7,7 +7,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":face:infra:face-bio-sdk"))
+    implementation(project(":face:infra:base-bio-sdk"))
     implementation (libs.face.detection)
 
 
@@ -16,6 +16,5 @@ dependencies {
     implementation (libs.tensorflow.lite.gpu)
     implementation (libs.tensorflow.lite.gpu.api)
     implementation (libs.tensorflow.lite.support)
-
 
 }

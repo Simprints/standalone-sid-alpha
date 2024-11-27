@@ -93,7 +93,7 @@ include(
     ":face:capture",
     ":face:infra:base-bio-sdk",
     ":face:infra:bio-sdk-resolver",
-    ":face:infra:facenet-v3",
+    ":face:infra:facenet-wrapper",
 )
 
 // Feature modules

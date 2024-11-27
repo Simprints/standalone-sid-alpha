@@ -1,7 +1,7 @@
 package com.simprints.face.capture.models
 
 import com.simprints.face.infra.basebiosdk.detection.Face
-import kotlin.math.abs
+import  kotlin.math.abs
 
 internal data class FaceTarget(
     val yawTarget: Target,

@@ -4,6 +4,7 @@ import com.simprints.core.DispatcherBG
 import com.simprints.face.infra.basebiosdk.matching.FaceIdentity
 import com.simprints.face.infra.basebiosdk.matching.FaceMatcher
 import com.simprints.face.infra.basebiosdk.matching.FaceSample
+
 import com.simprints.face.infra.biosdkresolver.ResolveFaceBioSdkUseCase
 import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
 import com.simprints.infra.enrolment.records.store.domain.models.BiometricDataSource
@@ -66,7 +67,7 @@ internal class FaceMatcherUseCase @Inject constructor(
     }
 
     private fun mapSamples(probes: List<MatchParams.FaceSample>) =
-        probes.map { FaceSample(it.faceId, it.template) }
+        probes.map { FaceSample (it.faceId, it.template) }
 
     private suspend fun getCandidates(
         query: SubjectQuery,
