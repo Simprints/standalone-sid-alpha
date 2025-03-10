@@ -7,7 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class RocV1BioSdk @Inject constructor(
+class FaceNetBioSdk @Inject constructor(
     override val initializer: FaceNetInitializer,
     override val detector: FaceNetDetector,
     override val matcher: FaceNetMatcher,

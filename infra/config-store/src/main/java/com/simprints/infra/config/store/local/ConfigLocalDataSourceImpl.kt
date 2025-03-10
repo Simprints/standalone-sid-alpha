@@ -24,7 +24,6 @@ import com.simprints.infra.config.store.models.SettingsPasswordConfig
 import com.simprints.infra.config.store.models.SynchronizationConfiguration
 import com.simprints.infra.config.store.models.TokenKeyType
 import com.simprints.infra.config.store.models.UpSynchronizationConfiguration
-import com.simprints.infra.config.store.models.Vero1Configuration
 import com.simprints.infra.config.store.tokenization.TokenizationProcessor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -37,17 +36,13 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
     private val projectDataStore: DataStore<ProtoProject>,
     private val configDataStore: DataStore<ProtoProjectConfiguration>,
     private val deviceConfigDataStore: DataStore<ProtoDeviceConfiguration>,
-    private val tokenizationProcessor: TokenizationProcessor
+    private val tokenizationProcessor: TokenizationProcessor,
 ) : ConfigLocalDataSource {
     override suspend fun saveProject(project: Project) {
         projectDataStore.updateData { project.toProto() }
     }
 
-    override suspend fun getProject(): Project = projectDataStore.data.first().toDomain().also {
-        if (it.id == "") {
-            throw NoSuchElementException()
-        }
-    }
+    override suspend fun getProject(): Project = projectDataStore.data.first().toDomain()
 
     override suspend fun clearProject() {
         projectDataStore.updateData { it.toBuilder().clear().build() }
@@ -73,8 +68,7 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
 
     override suspend fun getProjectConfiguration(): ProjectConfiguration = configDataStore.data.first().toDomain()
 
-    override fun watchProjectConfiguration(): Flow<ProjectConfiguration> =
-        configDataStore.data.map(ProtoProjectConfiguration::toDomain)
+    override fun watchProjectConfiguration(): Flow<ProjectConfiguration> = configDataStore.data.map(ProtoProjectConfiguration::toDomain)
 
     override suspend fun clearProjectConfiguration() {
         configDataStore.updateData { it.toBuilder().clear().build() }
@@ -82,12 +76,12 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
 
     override suspend fun getDeviceConfiguration(): DeviceConfiguration {
         val config = deviceConfigDataStore.data.first().toDomain()
-        val tokenizedModules = config.selectedModules.map {moduleId ->
-            when(moduleId) {
+        val tokenizedModules = config.selectedModules.map { moduleId ->
+            when (moduleId) {
                 is TokenizableString.Raw -> tokenizationProcessor.encrypt(
                     decrypted = moduleId,
                     tokenKeyType = TokenKeyType.ModuleId,
-                    project = getProject()
+                    project = getProject(),
                 )
                 is TokenizableString.Tokenized -> moduleId
             }
@@ -157,7 +151,7 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
     companion object {
         val defaultProjectConfiguration: ProtoProjectConfiguration =
             ProjectConfiguration(
-                id = "",
+                id = "123",
                 projectId = AuthStore.DEFAULT_PROJECT_ID,
                 updatedAt = "",
                 general = GeneralConfiguration(
@@ -176,10 +170,9 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                         qualityThreshold = 0f,
                         imageSavingStrategy = FaceConfiguration.ImageSavingStrategy.NEVER,
                         decisionPolicy = DecisionPolicy(
-                           low = 0,
+                            low = 0,
                             medium = 1,
                             high = 90,
-
                         ),
                         version = "1.0",
                     ),
@@ -202,10 +195,10 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                 ),
                 identification = IdentificationConfiguration(
                     maxNbOfReturnedCandidates = 10,
-                    poolType = IdentificationConfiguration.PoolType.USER,
+                    poolType = IdentificationConfiguration.PoolType.PROJECT,
                 ),
                 synchronization = SynchronizationConfiguration(
-                    frequency = SynchronizationConfiguration.Frequency.PERIODICALLY,
+                    frequency = SynchronizationConfiguration.Frequency.ONLY_PERIODICALLY_UP_SYNC,
                     up = UpSynchronizationConfiguration(
                         simprints = UpSynchronizationConfiguration.SimprintsUpSynchronizationConfiguration(
                             kind = UpSynchronizationConfiguration.UpSynchronizationKind.NONE,

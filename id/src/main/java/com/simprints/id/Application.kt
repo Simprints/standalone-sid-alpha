@@ -59,8 +59,9 @@ open class Application :
         SimberBuilder.initialize(this)
         Simber.setUserProperty(DEVICE_ID, deviceHardwareId)
         appScope.launch {
-            syncOrchestrator.cleanupWorkers()
-            syncOrchestrator.scheduleBackgroundWork()
+//            syncOrchestrator.cleanupWorkers()
+            // Disable all workers
+//            syncOrchestrator.scheduleBackgroundWork()
         }
     }
 }

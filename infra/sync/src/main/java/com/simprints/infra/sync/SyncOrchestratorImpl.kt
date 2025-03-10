@@ -58,6 +58,8 @@ internal class SyncOrchestratorImpl @Inject constructor(
     }
 
     override suspend fun scheduleBackgroundWork(withDelay: Boolean) {
+        // Disable all workers
+
         if (authStore.signedInProjectId.isNotEmpty()) {
             workManager.schedulePeriodicWorker<ProjectConfigDownSyncWorker>(
                 SyncConstants.PROJECT_SYNC_WORK_NAME,

@@ -20,20 +20,10 @@ import com.simprints.face.infra.biosdkresolver.ResolveFaceBioSdkUseCase
 import com.simprints.infra.authstore.AuthStore
 import com.simprints.infra.config.sync.ConfigManager
 import com.simprints.infra.license.LicenseRepository
-import com.simprints.infra.license.LicenseStatus
 import com.simprints.infra.license.SaveLicenseCheckEventUseCase
-import com.simprints.infra.license.determineLicenseStatus
-import com.simprints.infra.license.models.License
-import com.simprints.infra.license.models.LicenseState
-import com.simprints.infra.license.models.LicenseVersion
-import com.simprints.infra.license.models.Vendor
 import com.simprints.infra.logging.LoggingConstants.CrashReportTag.FACE_CAPTURE
-import com.simprints.infra.logging.LoggingConstants.CrashReportTag.LICENSE
 import com.simprints.infra.logging.Simber
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.last
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.UUID
@@ -91,10 +81,12 @@ internal class FaceCaptureViewModel @Inject constructor(
     }
 
     fun initFaceBioSdk(activity: Activity) = viewModelScope.launch {
-
         val initializer = resolveFaceBioSdk().initializer
         !initializer.tryInitWithLicense(activity, "")
+    }
 
+    fun setupAutoCapture() = viewModelScope.launch {
+        _isAutoCaptureEnabled.postValue(isUsingAutoCapture())
     }
 
     fun getSampleDetection() = faceDetections.firstOrNull()
