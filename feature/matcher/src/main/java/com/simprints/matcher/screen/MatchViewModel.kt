@@ -7,13 +7,15 @@ import androidx.lifecycle.viewModelScope
 import com.simprints.core.livedata.LiveDataEventWithContent
 import com.simprints.core.livedata.send
 import com.simprints.core.tools.time.TimeHelper
-import com.simprints.infra.logging.Simber
+import com.simprints.infra.authstore.AuthStore
+import com.simprints.infra.config.sync.ConfigManager
 import com.simprints.matcher.FaceMatchResult
 import com.simprints.matcher.FingerprintMatchResult
 import com.simprints.matcher.MatchParams
 import com.simprints.matcher.MatchResultItem
 import com.simprints.matcher.usecases.FaceMatcherUseCase
 import com.simprints.matcher.usecases.FingerprintMatcherUseCase
+import com.simprints.matcher.usecases.MatcherUseCase
 import com.simprints.matcher.usecases.SaveMatchEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -21,15 +23,15 @@ import kotlinx.coroutines.launch
 import java.io.Serializable
 import javax.inject.Inject
 
-
 @HiltViewModel
 internal class MatchViewModel @Inject constructor(
     private val faceMatcher: FaceMatcherUseCase,
     private val fingerprintMatcher: FingerprintMatcherUseCase,
     private val saveMatchEvent: SaveMatchEventUseCase,
+    private val authStore: AuthStore,
+    private val configManager: ConfigManager,
     private val timeHelper: TimeHelper,
 ) : ViewModel() {
-
     var isInitialized = false
         private set
 
@@ -52,45 +54,56 @@ internal class MatchViewModel @Inject constructor(
             isFaceMatch -> faceMatcher
             else -> fingerprintMatcher
         }
+        val project = configManager.getProject(authStore.signedInProjectId)
+        matcherUseCase(params, project).collect { matcherState ->
+            when (matcherState) {
+                MatcherUseCase.MatcherState.CandidateLoaded -> {
+                    (_matchState.value as? MatchState.LoadingCandidates)?.let { currentState ->
+                        _matchState.postValue(currentState.copy(loaded = currentState.loaded + 1))
+                    }
+                }
 
-        val matcherResult = matcherUseCase(
-            params,
-            onLoadingCandidates = { tag ->
-                Simber.tag(tag).i("Loading candidates")
-                _matchState.postValue(MatchState.LoadingCandidates)
-            },
-        )
+                is MatcherUseCase.MatcherState.LoadingStarted -> {
+                    _matchState.postValue(MatchState.LoadingCandidates(matcherState.totalCandidates, loaded = 0))
+                }
 
-        val endTime = timeHelper.now()
+                is MatcherUseCase.MatcherState.Success -> {
+                    val endTime = timeHelper.now()
 
-        saveMatchEvent(
-            startTime,
-            endTime,
-            params,
-            matcherResult.totalCandidates,
-            matcherResult.matcherName,
-            matcherResult.matchResultItems
-        )
+                    saveMatchEvent(
+                        startTime,
+                        endTime,
+                        params,
+                        matcherState.totalCandidates,
+                        matcherState.matcherName,
+                        matcherState.matchResultItems,
+                    )
 
-        setMatchState(matcherResult.totalCandidates, matcherResult.matchResultItems)
+                    setMatchState(matcherState.totalCandidates, matcherState.matchResultItems)
 
-        // wait a bit for the user to see the results
-        delay(matchingEndWaitTimeInMillis)
+                    // wait a bit for the user to see the results
+                    delay(MATCHING_END_WAIT_TIME_MS)
 
-        _matchResponse.send(
-            when {
-                isFaceMatch -> FaceMatchResult(matcherResult.matchResultItems)
-                else -> FingerprintMatchResult(matcherResult.matchResultItems, params.fingerprintSDK!!)
+                    _matchResponse.send(
+                        when {
+                            isFaceMatch -> FaceMatchResult(matcherState.matchResultItems)
+                            else -> FingerprintMatchResult(matcherState.matchResultItems, params.fingerprintSDK!!)
+                        },
+                    )
+                }
             }
-        )
+        }
     }
 
-    private fun setMatchState(candidatesMatched: Int, results: List<MatchResultItem>) {
-        val veryGoodMatches = results.count { veryGoodMatchThreshold <= it.confidence }
+    private fun setMatchState(
+        candidatesMatched: Int,
+        results: List<MatchResultItem>,
+    ) {
+        val veryGoodMatches = results.count { VERY_GOOD_MATCH_THRESHOLD <= it.confidence }
         val goodMatches =
-            results.count { goodMatchThreshold <= it.confidence && it.confidence < veryGoodMatchThreshold }
+            results.count { GOOD_MATCH_THRESHOLD <= it.confidence && it.confidence < VERY_GOOD_MATCH_THRESHOLD }
         val fairMatches =
-            results.count { fairMatchThreshold <= it.confidence && it.confidence < goodMatchThreshold }
+            results.count { FAIR_MATCH_THRESHOLD <= it.confidence && it.confidence < GOOD_MATCH_THRESHOLD }
 
         _matchState.postValue(
             MatchState.Finished(
@@ -98,8 +111,8 @@ internal class MatchViewModel @Inject constructor(
                 results.size,
                 veryGoodMatches,
                 goodMatches,
-                fairMatches
-            )
+                fairMatches,
+            ),
         )
     }
 
@@ -109,8 +122,14 @@ internal class MatchViewModel @Inject constructor(
 
     sealed class MatchState {
         data object NotStarted : MatchState()
-        data object LoadingCandidates : MatchState()
+
+        data class LoadingCandidates(
+            val total: Int,
+            val loaded: Int,
+        ) : MatchState()
+
         data object Matching : MatchState()
+
         data class NoPermission(
             val shouldOpenSettings: Boolean,
         ) : MatchState()
@@ -127,10 +146,9 @@ internal class MatchViewModel @Inject constructor(
     // TODO This configuration should be provided by SDK or project configuration
     //   https://simprints.atlassian.net/browse/CORE-2923
     companion object {
-
-        private const val veryGoodMatchThreshold = 50.0
-        private const val goodMatchThreshold = 35.0
-        private const val fairMatchThreshold = 20.0
-        private const val matchingEndWaitTimeInMillis = 1000L
+        private const val VERY_GOOD_MATCH_THRESHOLD = 50.0
+        private const val GOOD_MATCH_THRESHOLD = 35.0
+        private const val FAIR_MATCH_THRESHOLD = 20.0
+        private const val MATCHING_END_WAIT_TIME_MS = 1000L
     }
 }

@@ -10,7 +10,7 @@ import com.simprints.feature.validatepool.usecase.HasRecordsUseCase
 import com.simprints.feature.validatepool.usecase.IsModuleIdNotSyncedUseCase
 import com.simprints.feature.validatepool.usecase.RunBlockingEventSyncUseCase
 import com.simprints.feature.validatepool.usecase.ShouldSuggestSyncUseCase
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectQuery
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectQuery
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,7 +22,6 @@ internal class ValidateSubjectPoolViewModel @Inject constructor(
     private val shouldSuggestSync: ShouldSuggestSyncUseCase,
     private val runBlockingSync: RunBlockingEventSyncUseCase,
 ) : ViewModel() {
-
     val state: LiveData<LiveDataEventWithContent<ValidateSubjectPoolState>>
         get() = _state
     private var _state = MutableLiveData<LiveDataEventWithContent<ValidateSubjectPoolState>>()
@@ -52,6 +51,4 @@ internal class ValidateSubjectPoolViewModel @Inject constructor(
         isSyncing = false
         checkIdentificationPool(subjectQuery)
     }
-
 }
-

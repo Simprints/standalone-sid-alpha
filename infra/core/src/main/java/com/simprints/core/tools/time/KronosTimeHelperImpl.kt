@@ -10,8 +10,9 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
-class KronosTimeHelperImpl @Inject constructor(private val clock: KronosClock) : TimeHelper {
-
+class KronosTimeHelperImpl @Inject constructor(
+    private val clock: KronosClock,
+) : TimeHelper {
     init {
         clock.syncInBackground()
     }
@@ -24,14 +25,14 @@ class KronosTimeHelperImpl @Inject constructor(private val clock: KronosClock) :
         Timestamp(
             ms = it.posixTimeMs,
             isTrustworthy = it.timeSinceLastNtpSyncMs != null,
-            msSinceBoot = clock.getElapsedTimeMs()
+            msSinceBoot = clock.getElapsedTimeMs(),
         )
     }
 
-    override fun msBetweenNowAndTime(time: Long): Long = now().ms - time
+    override fun msBetweenNowAndTime(time: Timestamp): Long = now().ms - time.ms
 
-    override fun readableBetweenNowAndTime(date: Date): String =
-        getRelativeTimeSpanString(date.time, now().ms, MINUTE_IN_MILLIS, FORMAT_SHOW_DATE).toString()
+    override fun readableBetweenNowAndTime(date: Timestamp): String =
+        getRelativeTimeSpanString(date.ms, now().ms, MINUTE_IN_MILLIS, FORMAT_SHOW_DATE).toString()
 
     override fun getCurrentDateAsString(): String {
         val dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault())
@@ -58,5 +59,4 @@ class KronosTimeHelperImpl @Inject constructor(private val clock: KronosClock) :
 
         timeInMillis
     }
-
 }

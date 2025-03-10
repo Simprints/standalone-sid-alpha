@@ -7,9 +7,9 @@ import java.io.Serializable
 
 @Keep
 data class FingerprintCaptureResult(
+    val referenceId: String,
     var results: List<Item>,
 ) : Serializable {
-
     @Keep
     data class Item(
         val captureEventId: String?,
@@ -25,5 +25,4 @@ data class FingerprintCaptureResult(
         val imageRef: SecuredImageRef?,
         val format: String,
     ) : Serializable
-
 }

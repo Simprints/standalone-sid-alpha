@@ -5,14 +5,11 @@ import android.graphics.Rect
 import com.simprints.core.ExcludedFromGeneratedTestCoverageReports
 import com.simprints.face.infra.basebiosdk.detection.Face
 import com.simprints.face.infra.basebiosdk.detection.FaceDetector
-
-
 import java.nio.ByteBuffer
 import javax.inject.Inject
 
-
 @ExcludedFromGeneratedTestCoverageReports(
-    reason = "This class uses roc class that has native functions and can't be mocked"
+    reason = "This class uses roc class that has native functions and can't be mocked",
 )
 class RocV1Detector @Inject constructor() : FaceDetector {
     companion object {
@@ -27,7 +24,7 @@ class RocV1Detector @Inject constructor() : FaceDetector {
     // Ignore this class from test coverage calculations
     // because it uses jni native code which is hard to test
     @ExcludedFromGeneratedTestCoverageReports(
-        reason = "This class uses roc class that has native functions and can't be mocked"
+        reason = "This class uses roc class that has native functions and can't be mocked",
     )
 
 

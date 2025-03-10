@@ -15,9 +15,7 @@ internal class LoginInfoStore @Inject constructor(
     @ApplicationContext ctx: Context,
     securityManager: SecurityManager,
 ) {
-
     companion object {
-
         private const val LEGACY_PREF_FILE_NAME = "b3f0cf9b-4f3f-4c5b-bf85-7b1f44eddd7a"
         private const val SECURE_PREF_FILE_NAME = "99caf5cd-7b1c-4127-912d-77d4c35c51f3"
 

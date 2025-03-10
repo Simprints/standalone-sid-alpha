@@ -15,17 +15,16 @@ data class GuidSelectionEvent(
     override var scopeId: String? = null,
     override var projectId: String? = null,
 ) : Event() {
-
     constructor(
         createdAt: Timestamp,
         selectedId: String,
     ) : this(
         UUID.randomUUID().toString(),
         GuidSelectionPayload(createdAt, EVENT_VERSION, selectedId),
-        GUID_SELECTION
+        GUID_SELECTION,
     )
 
-    override fun getTokenizedFields(): Map<TokenKeyType, TokenizableString> = emptyMap()
+    override fun getTokenizableFields(): Map<TokenKeyType, TokenizableString> = emptyMap()
 
     override fun setTokenizedFields(map: Map<TokenKeyType, TokenizableString>) = this // No tokenized fields
 
@@ -36,7 +35,9 @@ data class GuidSelectionEvent(
         val selectedId: String,
         override val endedAt: Timestamp? = null,
         override val type: EventType = GUID_SELECTION,
-    ) : EventPayload()
+    ) : EventPayload() {
+        override fun toSafeString(): String = "guid: $selectedId"
+    }
 
     companion object {
         const val EVENT_VERSION = 2

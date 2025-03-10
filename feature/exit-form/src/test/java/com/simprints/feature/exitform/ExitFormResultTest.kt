@@ -1,11 +1,9 @@
 package com.simprints.feature.exitform
 
 import com.google.common.truth.Truth
-import com.simprints.feature.exitform.config.ExitFormOption
 import org.junit.Test
 
 class ExitFormResultTest {
-
     @Test
     fun `exit form result is safe when option present`() {
         Truth.assertThat(ExitFormResult(true, null).submittedOption()).isNull()

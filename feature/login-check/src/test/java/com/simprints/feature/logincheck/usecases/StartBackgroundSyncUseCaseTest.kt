@@ -7,13 +7,11 @@ import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
-import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 
 class StartBackgroundSyncUseCaseTest {
-
     @MockK
     lateinit var syncOrchestrator: SyncOrchestrator
 
@@ -34,31 +32,31 @@ class StartBackgroundSyncUseCaseTest {
 
     @Test
     fun `Schedules all syncs when called`() = runTest {
-        coEvery { configManager.getProjectConfiguration().synchronization.frequency } returns SynchronizationConfiguration.Frequency.PERIODICALLY
+        coEvery { configManager.getProjectConfiguration().synchronization.frequency } returns
+            SynchronizationConfiguration.Frequency.PERIODICALLY
 
         useCase.invoke()
 
-        coVerify {
-            syncOrchestrator.scheduleBackgroundWork()
-        }
+        coVerify { syncOrchestrator.scheduleBackgroundWork(any()) }
     }
 
     @Test
     fun `Starts event sync on start if required`() = runTest {
-        coEvery { configManager.getProjectConfiguration().synchronization.frequency } returns SynchronizationConfiguration.Frequency.PERIODICALLY_AND_ON_SESSION_START
+        coEvery { configManager.getProjectConfiguration().synchronization.frequency } returns
+            SynchronizationConfiguration.Frequency.PERIODICALLY_AND_ON_SESSION_START
 
         useCase.invoke()
 
-        verify { syncOrchestrator.startEventSync() }
+        coVerify { syncOrchestrator.scheduleBackgroundWork(eq(false)) }
     }
 
     @Test
     fun `Does not start event sync on start if not required`() = runTest {
-        coEvery { configManager.getProjectConfiguration().synchronization.frequency } returns SynchronizationConfiguration.Frequency.PERIODICALLY
+        coEvery { configManager.getProjectConfiguration().synchronization.frequency } returns
+            SynchronizationConfiguration.Frequency.PERIODICALLY
 
         useCase.invoke()
 
-        verify(exactly = 0) { syncOrchestrator.startEventSync() }
+        coVerify { syncOrchestrator.scheduleBackgroundWork(eq(true)) }
     }
-
 }

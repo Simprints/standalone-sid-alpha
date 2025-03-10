@@ -9,7 +9,6 @@ import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.google.common.truth.Truth
 import com.simprints.feature.dashboard.R
 import com.simprints.feature.dashboard.views.SyncCardState
 import com.simprints.testtools.hilt.launchFragmentInHiltContainer
@@ -32,7 +31,6 @@ import com.simprints.infra.resources.R as IDR
 @HiltAndroidTest
 @Config(application = HiltTestApplication::class)
 class SyncFragmentTest {
-
     companion object {
         private const val LAST_SYNC_TIME = "2022-10-10"
     }
@@ -80,13 +78,17 @@ class SyncFragmentTest {
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
-        onView(withId(R.id.sync_card_default_items_to_upload)).check(matches(withText(
-            context.getString(IDR.string.dashboard_sync_card_records_uploaded)
-        )))
+        onView(withId(R.id.sync_card_default_items_to_upload)).check(
+            matches(
+                withText(
+                    context.getString(IDR.string.dashboard_sync_card_records_uploaded),
+                ),
+            ),
+        )
         onView(withId(R.id.sync_card_default_state_sync_button))
             .check(matches(isDisplayed()))
             .perform(click())
@@ -108,13 +110,17 @@ class SyncFragmentTest {
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
-        onView(withId(R.id.sync_card_default_items_to_upload)).check(matches(withText(
-            context.resources.getQuantityString(IDR.plurals.dashboard_sync_card_records_to_upload, 2, 2)
-        )))
+        onView(withId(R.id.sync_card_default_items_to_upload)).check(
+            matches(
+                withText(
+                    context.resources.getQuantityString(IDR.plurals.dashboard_sync_card_records_to_upload, 2, 2),
+                ),
+            ),
+        )
         onView(withId(R.id.sync_card_default_state_sync_button))
             .check(matches(isDisplayed()))
             .perform(click())
@@ -136,7 +142,7 @@ class SyncFragmentTest {
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
@@ -158,13 +164,14 @@ class SyncFragmentTest {
                 R.id.sync_card_offline,
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
         onView(withId(R.id.sync_card_relogin_required)).check(matches(isDisplayed()))
-        onView(withId(R.id.sync_card_relogin_required_login_button)).check(matches(isDisplayed()))
+        onView(withId(R.id.sync_card_relogin_required_login_button))
+            .check(matches(isDisplayed()))
             .perform(click())
         verify(exactly = 1) { viewModel.login() }
     }
@@ -184,7 +191,7 @@ class SyncFragmentTest {
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
@@ -197,8 +204,8 @@ class SyncFragmentTest {
         mockSyncCardLiveData(
             SyncCardState.SyncFailedBackendMaintenance(
                 LAST_SYNC_TIME,
-                10L
-            )
+                10L,
+            ),
         )
 
         launchFragmentInHiltContainer<SyncFragment>(navController = navController)
@@ -211,7 +218,7 @@ class SyncFragmentTest {
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
@@ -236,7 +243,7 @@ class SyncFragmentTest {
                 R.id.sync_card_progress,
                 R.id.sync_card_try_again,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
@@ -259,7 +266,7 @@ class SyncFragmentTest {
                 R.id.sync_card_offline,
                 R.id.sync_card_progress,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
@@ -285,16 +292,11 @@ class SyncFragmentTest {
                 R.id.sync_card_offline,
                 R.id.sync_card_progress,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
-        onView(withId(R.id.sync_card_select_no_modules_button))
-            .check(matches(isDisplayed()))
-            .perform(click())
-        Truth.assertThat(navController.currentDestination?.id)
-            .isEqualTo(R.id.moduleSelectionFragment)
     }
 
     @Test
@@ -312,7 +314,7 @@ class SyncFragmentTest {
                 R.id.sync_card_select_no_modules_button,
                 R.id.sync_card_progress,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
@@ -337,7 +339,7 @@ class SyncFragmentTest {
                 R.id.sync_card_select_no_modules_button,
                 R.id.sync_card_offline,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
@@ -345,8 +347,8 @@ class SyncFragmentTest {
 
         onView(withId(R.id.sync_card_progress_sync_progress_bar)).check(
             matches(
-                isDisplayed()
-            )
+                isDisplayed(),
+            ),
         )
 
         val text = context.getString(IDR.string.dashboard_sync_card_progress, "50%")
@@ -368,14 +370,14 @@ class SyncFragmentTest {
                 R.id.sync_card_select_no_modules_button,
                 R.id.sync_card_offline,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
 
         onView(withId(R.id.sync_card_progress_sync_progress_bar)).check(
-            matches(isDisplayed())
+            matches(isDisplayed()),
         )
 
         onView(withId(R.id.sync_card_progress_message)).check(matches(withText(IDR.string.dashboard_sync_card_connecting)))
@@ -396,14 +398,14 @@ class SyncFragmentTest {
                 R.id.sync_card_select_no_modules_button,
                 R.id.sync_card_offline,
                 R.id.sync_card_relogin_required,
-            )
+            ),
         )
 
         val lastSyncText = context.getString(IDR.string.dashboard_sync_card_last_sync, LAST_SYNC_TIME)
         onView(withId(R.id.sync_card_last_sync)).check(matches(withText(lastSyncText)))
 
         onView(withId(R.id.sync_card_progress_sync_progress_bar)).check(
-            matches(isDisplayed())
+            matches(isDisplayed()),
         )
 
         onView(withId(R.id.sync_card_progress_message)).check(matches(withText(IDR.string.dashboard_sync_card_complete)))

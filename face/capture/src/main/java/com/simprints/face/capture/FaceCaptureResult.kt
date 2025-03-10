@@ -6,9 +6,9 @@ import java.io.Serializable
 
 @Keep
 data class FaceCaptureResult(
+    val referenceId: String,
     val results: List<Item>,
 ) : Serializable {
-
     @Keep
     data class Item(
         val captureEventId: String?,

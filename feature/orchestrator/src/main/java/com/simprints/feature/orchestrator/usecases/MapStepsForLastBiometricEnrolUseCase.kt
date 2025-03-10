@@ -15,14 +15,14 @@ import javax.inject.Inject
 
 // Last biometric enrolment heavily depends on the previous execution step results
 internal class MapStepsForLastBiometricEnrolUseCase @Inject constructor() {
-
     operator fun invoke(results: List<Serializable>) = results.mapNotNull { result ->
         when (result) {
             is EnrolLastBiometricResult -> EnrolLastBiometricStepResult.EnrolLastBiometricsResult(
-                result.newSubjectId
+                result.newSubjectId,
             )
 
             is FingerprintCaptureResult -> EnrolLastBiometricStepResult.FingerprintCaptureResult(
+                result.referenceId,
                 result.results.mapNotNull { it.sample }.map {
                     FingerTemplateCaptureResult(
                         it.fingerIdentifier.fromModuleApiToDomain(),
@@ -30,7 +30,7 @@ internal class MapStepsForLastBiometricEnrolUseCase @Inject constructor() {
                         it.templateQualityScore,
                         it.format,
                     )
-                }
+                },
             )
 
             is FingerprintMatchResult -> EnrolLastBiometricStepResult.FingerprintMatchResult(
@@ -39,15 +39,15 @@ internal class MapStepsForLastBiometricEnrolUseCase @Inject constructor() {
             )
 
             is FaceCaptureResult -> EnrolLastBiometricStepResult.FaceCaptureResult(
-                result.results.mapNotNull { it.sample }.map { FaceTemplateCaptureResult(it.template, it.format) }
+                result.referenceId,
+                result.results.mapNotNull { it.sample }.map { FaceTemplateCaptureResult(it.template, it.format) },
             )
 
             is FaceMatchResult -> EnrolLastBiometricStepResult.FaceMatchResult(
-                result.results.map { MatchResult(it.subjectId, it.confidence) }
+                result.results.map { MatchResult(it.subjectId, it.confidence) },
             )
 
             else -> null
         }
     }
-
 }

@@ -1,10 +1,14 @@
 package com.simprints.fingerprint.capture.screen
 
-import android.graphics.Paint
+import android.app.Activity
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import androidx.activity.addCallback
+import androidx.annotation.ColorRes
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -23,13 +27,11 @@ import com.simprints.feature.alert.config.AlertColor
 import com.simprints.feature.alert.toArgs
 import com.simprints.feature.exitform.ExitFormContract
 import com.simprints.feature.exitform.ExitFormResult
-import com.simprints.feature.exitform.exitFormConfiguration
-import com.simprints.feature.exitform.scannerOptions
-import com.simprints.feature.exitform.toArgs
 import com.simprints.fingerprint.capture.R
 import com.simprints.fingerprint.capture.databinding.FragmentFingerprintCaptureBinding
 import com.simprints.fingerprint.capture.resources.buttonBackgroundColour
 import com.simprints.fingerprint.capture.resources.buttonTextId
+import com.simprints.fingerprint.capture.resources.statusBarColor
 import com.simprints.fingerprint.capture.state.CaptureState
 import com.simprints.fingerprint.capture.state.CollectFingerprintsState
 import com.simprints.fingerprint.capture.views.confirmfingerprints.ConfirmFingerprintsDialog
@@ -39,6 +41,7 @@ import com.simprints.fingerprint.connect.FingerprintConnectContract
 import com.simprints.fingerprint.connect.FingerprintConnectResult
 import com.simprints.infra.events.event.domain.models.AlertScreenEvent.AlertScreenPayload.AlertScreenEventType
 import com.simprints.infra.logging.LoggingConstants.CrashReportTag.FINGER_CAPTURE
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.uibase.extensions.showToast
 import com.simprints.infra.uibase.navigation.finishWithResult
@@ -53,7 +56,6 @@ import com.simprints.infra.resources.R as IDR
 
 @AndroidEntryPoint
 internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerprint_capture) {
-
     private val args: FingerprintCaptureFragmentArgs by navArgs()
     private val binding by viewBinding(FragmentFingerprintCaptureBinding::bind)
     private val vm: FingerprintCaptureViewModel by viewModels()
@@ -65,13 +67,24 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
     @Inject
     lateinit var observeFingerprintScanStatus: ObserveFingerprintScanStatusUseCase
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    /**
+     * Cache for resolved colors from the resource lookup.
+     * Key: color resource ID
+     * Value: resolved color value
+     */
+    private val resolvedColorCache = mutableMapOf<Int, Int>()
+
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("FingerprintCaptureFragment started", tag = ORCHESTRATION)
 
         findNavController().handleResult<AlertResult>(
             viewLifecycleOwner,
             R.id.fingerprintCaptureFragment,
-            AlertContract.DESTINATION
+            AlertContract.DESTINATION,
         ) { findNavController().finishWithResult(this, it) }
 
         findNavController().handleResult<ExitFormResult>(
@@ -87,7 +100,7 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
         findNavController().handleResult<Serializable>(
             viewLifecycleOwner,
             R.id.fingerprintCaptureFragment,
-            FingerprintConnectContract.DESTINATION
+            FingerprintConnectContract.DESTINATION,
         ) {
             if (it !is FingerprintConnectResult || !it.isSuccess) {
                 findNavController().finishWithResult(this, it)
@@ -96,7 +109,10 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             vm.handleOnBackPressed()
-            if (vm.stateLiveData.value?.currentCaptureState()?.isCommunicating() != true) {
+            if (vm.stateLiveData.value
+                    ?.currentCaptureState()
+                    ?.isCommunicating() != true
+            ) {
                 openRefusal()
             }
         }
@@ -120,32 +136,30 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
     }
 
     private fun observeBioSdkInit() {
-        vm.invalidLicense.observe(viewLifecycleOwner, LiveDataEventObserver {
-            findNavController().navigateSafely(
-                this,
-                R.id.action_fingerprintCaptureFragment_to_graphAlert,
-                alertConfiguration {
-                    color = AlertColor.Gray
-                    titleRes = IDR.string.configuration_licence_invalid_title
-                    messageRes = IDR.string.configuration_licence_invalid_message
-                    image = IDR.drawable.ic_exclamation
-                    leftButton = AlertButtonConfig.Close
-                    appErrorReason = AppErrorReason.LICENSE_INVALID
-                    eventType = AlertScreenEventType.LICENSE_INVALID
-                }.toArgs()
-            )
-        })
+        vm.invalidLicense.observe(
+            viewLifecycleOwner,
+            LiveDataEventObserver {
+                findNavController().navigateSafely(
+                    this,
+                    R.id.action_fingerprintCaptureFragment_to_graphAlert,
+                    alertConfiguration {
+                        color = AlertColor.Gray
+                        titleRes = IDR.string.configuration_licence_invalid_title
+                        messageRes = IDR.string.configuration_licence_invalid_message
+                        image = IDR.drawable.ic_exclamation
+                        leftButton = AlertButtonConfig.Close
+                        appErrorReason = AppErrorReason.LICENSE_INVALID
+                        eventType = AlertScreenEventType.LICENSE_INVALID
+                    }.toArgs(),
+                )
+            },
+        )
     }
 
     private fun openRefusal() {
         findNavController().navigateSafely(
             this,
             R.id.action_fingerprintCaptureFragment_to_graphExitForm,
-            exitFormConfiguration {
-                titleRes = IDR.string.exit_form_title_fingerprinting
-                backButtonRes =IDR.string.exit_form_continue_fingerprints_button
-                visibleOptions = scannerOptions()
-            }.toArgs()
         )
     }
 
@@ -159,28 +173,69 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
 
     private fun initViewPagerManager() {
         fingerViewPagerManager = FingerViewPagerManager(
-            vm.stateLiveData.value?.fingerStates?.map { it.id }.orEmpty().toMutableList(),
+            vm.stateLiveData.value
+                ?.fingerStates
+                ?.map { it.id }
+                .orEmpty()
+                .toMutableList(),
             this,
             binding.fingerprintViewPager,
             binding.fingerprintIndicator,
             onFingerSelected = { position -> vm.updateSelectedFinger(position) },
-            isAbleToSelectNewFinger = { vm.stateLiveData.value?.currentCaptureState()?.isCommunicating() != true }
+            isAbleToSelectNewFinger = {
+                vm.stateLiveData.value
+                    ?.currentCaptureState()
+                    ?.isCommunicating() != true
+            },
+            onPageScrolled = { position: Int, positionOffset: Float ->
+                if (positionOffset != 0.0f) {
+                    vm.stateLiveData.value?.fingerStates?.let { fingerStates ->
+                        val nextPage = if (positionOffset > 0.0f) {
+                            position + 1
+                        } else {
+                            position
+                        }
+                        val currentColor = fingerStates[position].currentCapture().statusBarColor()
+                        val nextColor = fingerStates[nextPage].currentCapture().statusBarColor()
+                        if (currentColor != nextColor) {
+                            val color = ColorUtils.blendARGB(
+                                getColorFromResId(currentColor, requireContext()),
+                                getColorFromResId(nextColor, requireContext()),
+                                positionOffset,
+                            )
+                            binding.toolbar.setBackgroundColor(color)
+                            setCustomStatusBarColor(color, requireActivity())
+                            binding.fingerprintScanButton.setBackgroundColor(color)
+                        }
+                    }
+                }
+            },
         )
     }
 
-    private fun initMissingFingerButton() {
-        binding.fingerprintMissingFinger.paintFlags =
-            binding.fingerprintMissingFinger.paintFlags or Paint.UNDERLINE_TEXT_FLAG
+    /**
+     * Resolves a color from the [colorResId]. To optimize the color resource lookup, this function
+     * caches all resolved colors and returns cached value for [colorResId] during next invocations
+     */
+    private fun getColorFromResId(
+        colorResId: Int,
+        context: Context,
+    ): Int = resolvedColorCache[colorResId] ?: ContextCompat
+        .getColor(context, colorResId)
+        .also { resolvedColor ->
+            resolvedColorCache[colorResId] = resolvedColor
+        }
 
+    private fun initMissingFingerButton() {
         binding.fingerprintMissingFinger.setOnClickListener {
-            Simber.tag(FINGER_CAPTURE.name).i("Missing finger text clicked")
+            Simber.i("Missing finger text clicked", tag = FINGER_CAPTURE)
             vm.handleMissingFingerButtonPressed()
         }
     }
 
     private fun initScanButton() {
         binding.fingerprintScanButton.setOnClickListener {
-            Simber.tag(FINGER_CAPTURE.name).i("Scan button clicked")
+            Simber.i("Scan button clicked", tag = FINGER_CAPTURE)
             vm.handleScanButtonPressed()
         }
     }
@@ -193,8 +248,11 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
 
                 // Update button
                 with(state.currentCaptureState()) {
+                    val statusBarColor = getColorFromResId(statusBarColor(), requireContext())
                     binding.fingerprintScanButton.text = getString(buttonTextId(state.isAskingRescan))
                     binding.fingerprintScanButton.setBackgroundColor(resources.getColor(buttonBackgroundColour(), null))
+                    binding.toolbar.setBackgroundColor(statusBarColor)
+                    setCustomStatusBarColor(statusBarColor, requireActivity())
                 }
 
                 updateConfirmDialog(state)
@@ -204,41 +262,51 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
 
         vm.vibrate.observe(viewLifecycleOwner, LiveDataEventObserver { Vibrate.vibrate(requireContext()) })
 
-        vm.noFingersScannedToast.observe(viewLifecycleOwner, LiveDataEventObserver {
-            requireContext().showToast(IDR.string.fingerprint_capture_no_fingers_scanned)
-        })
+        vm.noFingersScannedToast.observe(
+            viewLifecycleOwner,
+            LiveDataEventObserver {
+                Simber.i("No finger scanned", tag = FINGER_CAPTURE)
+                requireContext().showToast(IDR.string.fingerprint_capture_no_fingers_scanned)
+            },
+        )
 
-        vm.launchAlert.observe(viewLifecycleOwner, LiveDataEventObserver {
-            findNavController().navigateSafely(
-                this,
-                R.id.action_fingerprintCaptureFragment_to_graphAlert,
-                alertConfiguration {
-                    titleRes = IDR.string.fingerprint_capture_error_title
-                    messageRes = IDR.string.fingerprint_capture_unexpected_error_message
-                    color = AlertColor.Red
-                    image = IDR.drawable.ic_alert_default
-                    eventType = AlertScreenEventType.UNEXPECTED_ERROR
-                    leftButton = AlertButtonConfig.Close
-                }.toArgs()
-            )
-        })
-        vm.finishWithFingerprints.observe(viewLifecycleOwner, LiveDataEventWithContentObserver { fingerprints ->
-            findNavController().finishWithResult(this, fingerprints)
-        })
+        vm.launchAlert.observe(
+            viewLifecycleOwner,
+            LiveDataEventObserver {
+                findNavController().navigateSafely(
+                    this,
+                    R.id.action_fingerprintCaptureFragment_to_graphAlert,
+                    alertConfiguration {
+                        titleRes = IDR.string.fingerprint_capture_error_title
+                        messageRes = IDR.string.fingerprint_capture_unexpected_error_message
+                        color = AlertColor.Red
+                        image = IDR.drawable.ic_alert_default
+                        eventType = AlertScreenEventType.UNEXPECTED_ERROR
+                        leftButton = AlertButtonConfig.Close
+                    }.toArgs(),
+                )
+            },
+        )
+        vm.finishWithFingerprints.observe(
+            viewLifecycleOwner,
+            LiveDataEventWithContentObserver { fingerprints ->
+                findNavController().finishWithResult(this, fingerprints)
+            },
+        )
     }
 
     private fun launchConnection() {
-        //If we exit from the ConnectScanner screen, we first resume the capture screen. This leads
-        //to a crash because a second navigation to ConnectScanner is attempted but by the time it's
+        // If we exit from the ConnectScanner screen, we first resume the capture screen. This leads
+        // to a crash because a second navigation to ConnectScanner is attempted but by the time it's
         // executed we are already on the exit screen.
         try {
             findNavController().navigateSafely(
                 this,
                 R.id.action_fingerprintCaptureFragment_to_graphConnectScanner,
-                FingerprintConnectContract.getArgs(args.params.fingerprintSDK)
+                FingerprintConnectContract.getArgs(args.params.fingerprintSDK),
             )
         } catch (e: Exception) {
-            Simber.tag(FINGER_CAPTURE.name).i("Error launching scanner connection screen", e)
+            Simber.i("Error launching scanner connection screen", e, tag = FINGER_CAPTURE)
         }
     }
 
@@ -247,14 +315,34 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
         vm.handleOnResume()
         observeFingerprintScanStatus(
             viewLifecycleOwner.lifecycleScope,
-            args.params.fingerprintSDK
+            args.params.fingerprintSDK,
         )
+        val color = vm.stateLiveData.value
+            ?.currentCaptureState()
+            ?.statusBarColor()
+            ?.let { getColorFromResId(it, requireContext()) }
+        setCustomStatusBarColor(color = color, activity = requireActivity())
     }
 
     override fun onPause() {
+        setCustomStatusBarColor(color = null, activity = requireActivity())
         vm.handleOnPause()
         super.onPause()
         observeFingerprintScanStatus.stopObserving()
+    }
+
+    private fun setCustomStatusBarColor(
+        color: Int?,
+        activity: Activity,
+    ) {
+        @ColorRes val resolvedColor: Int = when (color) {
+            null -> ContextCompat.getColor(activity, IDR.color.simprints_blue_dark)
+            else -> color
+        }
+        with(activity.window) {
+            if (statusBarColor == resolvedColor) return
+            statusBarColor = resolvedColor
+        }
     }
 
     private fun updateConfirmDialog(state: CollectFingerprintsState) {
@@ -263,19 +351,22 @@ internal class FingerprintCaptureFragment : Fragment(R.layout.fragment_fingerpri
                 ConfirmFingerprintsDialog.Item(
                     it.id,
                     it.captures.count { capture -> capture is CaptureState.ScanProcess.Collected && capture.scanResult.isGoodScan() },
-                    it.captures.size
+                    it.captures.size,
                 )
             }
-            ConfirmFingerprintsDialog(requireContext(), dialogItems,
+            ConfirmFingerprintsDialog(
+                requireContext(),
+                dialogItems,
                 onConfirm = {
-                    Simber.tag(FINGER_CAPTURE.name).i("Confirm fingerprints clicked")
+                    Simber.i("Confirm fingerprints clicked", tag = FINGER_CAPTURE)
                     vm.handleConfirmFingerprintsAndContinue()
                 },
                 onRestart = {
-                    Simber.tag(FINGER_CAPTURE.name).i("Restart clicked")
+                    Simber.i("Restart clicked", tag = FINGER_CAPTURE)
                     vm.handleRestart()
-                })
-                .create().also { it.show() }
+                },
+            ).create()
+                .also { it.show() }
         } else if (!state.isShowingConfirmDialog) {
             confirmDialog?.let { if (it.isShowing) it.dismiss() }
             null

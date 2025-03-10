@@ -6,6 +6,7 @@ import com.simprints.core.domain.common.Partitioning
 import com.simprints.core.tools.time.TimeHelper
 import com.simprints.core.tools.time.Timestamp
 import com.simprints.infra.config.store.ConfigRepository
+import com.simprints.infra.config.store.models.Project
 import com.simprints.infra.events.EventRepository
 import com.simprints.infra.events.event.domain.EventCount
 import com.simprints.infra.events.event.domain.models.scope.EventScope
@@ -37,7 +38,6 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 internal class EventSyncManagerTest {
-
     @get:Rule
     val testCoroutineRule = TestCoroutineRule()
 
@@ -71,6 +71,9 @@ internal class EventSyncManagerTest {
     @MockK
     lateinit var eventScope: EventScope
 
+    @MockK
+    lateinit var project: Project
+
     private lateinit var eventSyncManagerImpl: EventSyncManagerImpl
 
     @Before
@@ -93,7 +96,7 @@ internal class EventSyncManagerTest {
             downSyncTask = downSyncTask,
             eventRemoteDataSource = eventRemoteDataSource,
             configRepository = configRepository,
-            dispatcher = testCoroutineRule.testCoroutineDispatcher
+            dispatcher = testCoroutineRule.testCoroutineDispatcher,
         )
     }
 
@@ -138,11 +141,11 @@ internal class EventSyncManagerTest {
     @Test
     fun `downSync should call down sync helper`() = runTest {
         coEvery { eventRepository.createEventScope(any()) } returns eventScope
-        coEvery { downSyncTask.downSync(any(), any(), eventScope) } returns emptyFlow()
+        coEvery { downSyncTask.downSync(any(), any(), eventScope, any()) } returns emptyFlow()
 
         eventSyncManagerImpl.downSyncSubject(DEFAULT_PROJECT_ID, "subjectId")
 
-        coVerify { downSyncTask.downSync(any(), any(), eventScope) }
+        coVerify { downSyncTask.downSync(any(), any(), eventScope, any()) }
     }
 
     @Test

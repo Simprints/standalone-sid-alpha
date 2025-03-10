@@ -7,6 +7,7 @@ import com.simprints.infra.events.event.domain.models.AgeGroupSelectionEvent.Age
 import com.simprints.infra.events.event.domain.models.AlertScreenEvent.AlertScreenPayload
 import com.simprints.infra.events.event.domain.models.AuthenticationEvent.AuthenticationPayload
 import com.simprints.infra.events.event.domain.models.AuthorizationEvent.AuthorizationPayload
+import com.simprints.infra.events.event.domain.models.BiometricReferenceCreationEvent.BiometricReferenceCreationPayload
 import com.simprints.infra.events.event.domain.models.CandidateReadEvent.CandidateReadPayload
 import com.simprints.infra.events.event.domain.models.CompletionCheckEvent.CompletionCheckPayload
 import com.simprints.infra.events.event.domain.models.ConnectivitySnapshotEvent.ConnectivitySnapshotPayload
@@ -36,13 +37,13 @@ import com.simprints.infra.events.event.domain.models.callout.EnrolmentLastBiome
 import com.simprints.infra.events.event.domain.models.callout.IdentificationCalloutEvent.IdentificationCalloutPayload
 import com.simprints.infra.events.event.domain.models.callout.VerificationCalloutEvent.VerificationCalloutPayload
 import com.simprints.infra.events.event.domain.models.downsync.EventDownSyncRequestEvent.EventDownSyncRequestPayload
-import com.simprints.infra.events.event.domain.models.face.FaceCaptureBiometricsEvent
+import com.simprints.infra.events.event.domain.models.face.FaceCaptureBiometricsEvent.FaceCaptureBiometricsPayload
 import com.simprints.infra.events.event.domain.models.face.FaceCaptureConfirmationEvent.FaceCaptureConfirmationPayload
-import com.simprints.infra.events.event.domain.models.face.FaceCaptureEvent
+import com.simprints.infra.events.event.domain.models.face.FaceCaptureEvent.FaceCapturePayload
 import com.simprints.infra.events.event.domain.models.face.FaceFallbackCaptureEvent.FaceFallbackCapturePayload
 import com.simprints.infra.events.event.domain.models.face.FaceOnboardingCompleteEvent.FaceOnboardingCompletePayload
-import com.simprints.infra.events.event.domain.models.fingerprint.FingerprintCaptureBiometricsEvent
-import com.simprints.infra.events.event.domain.models.fingerprint.FingerprintCaptureEvent
+import com.simprints.infra.events.event.domain.models.fingerprint.FingerprintCaptureBiometricsEvent.FingerprintCaptureBiometricsPayload
+import com.simprints.infra.events.event.domain.models.fingerprint.FingerprintCaptureEvent.FingerprintCapturePayload
 import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestEvent.EventUpSyncRequestPayload
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
@@ -59,8 +60,8 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = IdentificationCalloutPayload::class, name = EventType.CALLOUT_IDENTIFICATION_KEY),
     JsonSubTypes.Type(value = VerificationCalloutPayload::class, name = EventType.CALLOUT_VERIFICATION_KEY),
     JsonSubTypes.Type(value = FaceCaptureConfirmationPayload::class, name = EventType.FACE_CAPTURE_CONFIRMATION_KEY),
-    JsonSubTypes.Type(value = FaceCaptureEvent.FaceCapturePayload::class, name = EventType.FACE_CAPTURE_KEY),
-    JsonSubTypes.Type(value = FaceCaptureBiometricsEvent.FaceCaptureBiometricsPayload::class, name = EventType.FACE_CAPTURE_BIOMETRICS_KEY),
+    JsonSubTypes.Type(value = FaceCapturePayload::class, name = EventType.FACE_CAPTURE_KEY),
+    JsonSubTypes.Type(value = FaceCaptureBiometricsPayload::class, name = EventType.FACE_CAPTURE_BIOMETRICS_KEY),
     JsonSubTypes.Type(value = FaceFallbackCapturePayload::class, name = EventType.FACE_FALLBACK_CAPTURE_KEY),
     JsonSubTypes.Type(value = FaceOnboardingCompletePayload::class, name = EventType.FACE_ONBOARDING_COMPLETE_KEY),
     JsonSubTypes.Type(value = AlertScreenPayload::class, name = EventType.ALERT_SCREEN_KEY),
@@ -70,10 +71,10 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = CompletionCheckPayload::class, name = EventType.COMPLETION_CHECK_KEY),
     JsonSubTypes.Type(value = ConnectivitySnapshotPayload::class, name = EventType.CONNECTIVITY_SNAPSHOT_KEY),
     JsonSubTypes.Type(value = ConsentPayload::class, name = EventType.CONSENT_KEY),
-    JsonSubTypes.Type(value = EnrolmentEventV1.EnrolmentPayload::class, name = EventType.ENROLMENT_V1_KEY),
     JsonSubTypes.Type(value = EnrolmentEventV2.EnrolmentPayload::class, name = EventType.ENROLMENT_V2_KEY),
-    JsonSubTypes.Type(value = FingerprintCaptureEvent.FingerprintCapturePayload::class, name = EventType.FINGERPRINT_CAPTURE_KEY),
-    JsonSubTypes.Type(value = FingerprintCaptureBiometricsEvent.FingerprintCaptureBiometricsPayload::class, name = EventType.FINGERPRINT_CAPTURE_BIOMETRICS_KEY),
+    JsonSubTypes.Type(value = EnrolmentEventV4.EnrolmentPayload::class, name = EventType.ENROLMENT_V4_KEY),
+    JsonSubTypes.Type(value = FingerprintCapturePayload::class, name = EventType.FINGERPRINT_CAPTURE_KEY),
+    JsonSubTypes.Type(value = FingerprintCaptureBiometricsPayload::class, name = EventType.FINGERPRINT_CAPTURE_BIOMETRICS_KEY),
     JsonSubTypes.Type(value = GuidSelectionPayload::class, name = EventType.GUID_SELECTION_KEY),
     JsonSubTypes.Type(value = IntentParsingPayload::class, name = EventType.INTENT_PARSING_KEY),
     JsonSubTypes.Type(value = InvalidIntentPayload::class, name = EventType.INVALID_INTENT_KEY),
@@ -89,10 +90,13 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = EventUpSyncRequestPayload::class, name = Companion.EVENT_UP_SYNC_REQUEST_KEY),
     JsonSubTypes.Type(value = LicenseCheckEventPayload::class, name = Companion.LICENSE_CHECK_KEY),
     JsonSubTypes.Type(value = AgeGroupSelectionPayload::class, name = Companion.AGE_GROUP_SELECTION_KEY),
+    JsonSubTypes.Type(value = BiometricReferenceCreationPayload::class, name = Companion.BIOMETRIC_REFERENCE_CREATION_KEY),
 )
 abstract class EventPayload {
     abstract val type: EventType
     abstract val eventVersion: Int
     abstract val createdAt: Timestamp
     abstract val endedAt: Timestamp?
+
+    open fun toSafeString(): String = ""
 }

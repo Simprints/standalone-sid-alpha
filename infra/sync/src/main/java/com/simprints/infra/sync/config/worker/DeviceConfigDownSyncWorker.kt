@@ -22,28 +22,24 @@ internal class DeviceConfigDownSyncWorker @AssistedInject constructor(
     private val syncOrchestrator: SyncOrchestrator,
     @DispatcherBG private val dispatcher: CoroutineDispatcher,
 ) : SimCoroutineWorker(context, params) {
+    override val tag: String = "DeviceConfigDownSync"
 
-    override val tag: String = "DeviceConfigSyncWorker"
+    override suspend fun doWork(): Result = withContext(dispatcher) {
+        crashlyticsLog("Started")
+        showProgressNotification()
+        try {
+            val state = configManager.getDeviceState()
 
-    override suspend fun doWork(): Result =
-        withContext(dispatcher) {
-            showProgressNotification()
-            crashlyticsLog("Fetching device config state")
-
-            try {
-                val state = configManager.getDeviceState()
-
-                if (state.isCompromised) {
-                    logoutUseCase()
-                } else if (state.recordsToUpSync != null) {
-                    state.recordsToUpSync?.let { records ->
-                        crashlyticsLog("subject ids ${records.subjectIds.size}")
-                        syncOrchestrator.uploadEnrolmentRecords(records.id, records.subjectIds)
-                    }
+            if (state.isCompromised) {
+                logoutUseCase()
+            } else if (state.recordsToUpSync != null) {
+                state.recordsToUpSync?.let { records ->
+                    syncOrchestrator.uploadEnrolmentRecords(records.id, records.subjectIds)
                 }
-                success()
-            } catch (t: Throwable) {
-                fail(t)
             }
+            success()
+        } catch (t: Throwable) {
+            fail(t)
         }
+    }
 }

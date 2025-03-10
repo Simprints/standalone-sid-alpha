@@ -9,10 +9,6 @@ import com.simprints.fingerprint.infra.scannermock.simulated.SimulationMode
 import com.simprints.fingerprint.infra.scannermock.simulated.component.SimulatedBluetoothAdapter
 import com.simprints.fingerprint.infra.scannermock.simulated.tools.byteArrayFromHexString
 import io.mockk.mockk
-import io.reactivex.android.plugins.RxAndroidPlugins
-import io.reactivex.observers.TestObserver
-import io.reactivex.plugins.RxJavaPlugins
-import io.reactivex.schedulers.Schedulers
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -22,128 +18,134 @@ import java.util.concurrent.LinkedBlockingQueue
 
 @RunWith(AndroidJUnit4::class)
 class OutgoingMessagesToScannerTest {
-
     private lateinit var testScanner: Scanner
-    private lateinit var testObserver: TestObserver<ByteArray>
-
+    private lateinit var receivedValues: MutableList<ByteArray>
+    private var testObserver: (message: ByteArray) -> Unit = { bytes ->
+        receivedValues.add(bytes)
+    }
 
     @Before
     fun setup() {
-        RxAndroidPlugins.setInitMainThreadSchedulerHandler { Schedulers.trampoline() }
-        RxJavaPlugins.setIoSchedulerHandler { Schedulers.trampoline() }
-
-        testObserver = TestObserver()
-
         val simulatedScannerManager = SimulatedScannerManager(
             SimulationMode.V1,
             outgoingStreamObservers = setOf(testObserver),
-            context = mockk(relaxed = true)
+            context = mockk(),
         )
+        receivedValues = mutableListOf()
         val simulatedBluetoothAdapter = SimulatedBluetoothAdapter(simulatedScannerManager)
         testScanner = Scanner("F0:AC:D7:C0:00:00", simulatedBluetoothAdapter)
 
         assertOnSuccessCallback { testScanner.connect(it) }
     }
 
-
     @Test
     fun outgoing_message_un20wakeup() {
         assertOnSuccessCallback { testScanner.un20Wakeup(it) }
 
-        assertOutgoingMessageIs(un20WakeUp)
-        assertOutgoingMessageIs(getSensorInfo, 1)
+        assertOutgoingMessageIs(WAKE_UP_MESSAGE)
+        assertOutgoingMessageIs(SENSOR_INFO_REQUEST, 1)
     }
 
     @Test
     fun outgoing_message_resetUI() {
         assertOnSuccessCallback { testScanner.resetUI(it) }
 
-        assertOutgoingMessageIs(resetUI)
+        assertOutgoingMessageIs(RESET_UI_COMMAND)
     }
 
     @Test
     fun outgoing_message_internal_getImageQuality() {
         invokePrivateMethod(testScanner, "internal_getImageQuality")
 
-        assertOutgoingMessageIs(getImageQuality)
+        assertOutgoingMessageIs(GET_IMAGE_QUALITY)
     }
 
     @Test
     fun outgoing_message_internal_getTemplate() {
         invokePrivateMethod(testScanner, "internal_getTemplate")
 
-        assertOutgoingMessageIs(generateTemplateRequest)
-        assertOutgoingMessageIs(getTemplateFragment0, 1)
-        assertOutgoingMessageIs(getTemplateFragment1, 2)
-        assertOutgoingMessageIs(getTemplateFragment2, 3)
+        assertOutgoingMessageIs(GET_TEMPLATE_REQUEST)
+        assertOutgoingMessageIs(GET_TEMPLATE_FRAGMENT_0, 1)
+        assertOutgoingMessageIs(GET_TEMPLATE_FRAGMENT_1, 2)
+        assertOutgoingMessageIs(GET_TEMPLATE_FRAGMENT_2, 3)
     }
 
     @Test
     fun outgoing_message_connection_getBank() {
         testScanner.connection_getBank()
-        assertOutgoingMessageIs(getRunningBank)
+        assertOutgoingMessageIs(GET_RUNNING_BANK)
     }
 
     @Test
     fun outgoing_message_connection_setBank() {
         testScanner.connection_setBank(Scanner.BANK_ID.PRODUCTION.id, 1.toChar(), 0.toChar())
-        assertOutgoingMessageIs(setRunningBank)
-
+        assertOutgoingMessageIs(SET_RUNNING_BANK)
     }
 
     @Test
     fun outgoing_message_connection_sendOtaMeta() {
         testScanner.connection_sendOtaMeta(mockMeta[0], mockMeta[1].toShort())
-        assertOutgoingMessageIs(setMetaData)
+        assertOutgoingMessageIs(META_DATA_COMMAND)
     }
 
     @Test
     fun outgoing_message_connection_sendOtaPacket() {
-        testScanner.connection_sendOtaPacket(0, mockOtaPacket0.length, mockOtaPacket0)
-        assertOutgoingMessageIs(setOtaPacket0)
+        testScanner.connection_sendOtaPacket(0, OTA_PACKET_0.length, OTA_PACKET_0)
+        assertOutgoingMessageIs(SET_OTA_PACKET_0)
     }
 
     @Test
     fun outgoing_message_connection_crashVero() {
         testScanner.connection_crashVero(0.toChar())
-        assertOutgoingMessageIs(crashVero0)
+        assertOutgoingMessageIs(CRASH_VERO_0)
     }
 
-
-    private fun callBlocking(function: (ScannerCallback) -> Unit, scannerCallback: ScannerCallback? = null, wakeUpLooper: Boolean = false): Boolean {
+    private fun callBlocking(
+        function: (ScannerCallback) -> Unit,
+        scannerCallback: ScannerCallback? = null,
+    ): Boolean {
         val result = LinkedBlockingQueue<Boolean>()
 
-        function(wrappedScannerCallback(onSuccess = {
-            scannerCallback?.onSuccess()
-            result.put(true)
-        }, onFailure = {
-            scannerCallback?.onFailure(it)
-            result.put(false)
-        }))
+        function(
+            wrappedScannerCallback(onSuccess = {
+                scannerCallback?.onSuccess()
+                result.put(true)
+            }, onFailure = {
+                scannerCallback?.onFailure(it)
+                result.put(false)
+            }),
+        )
 
-        //TODO loopers in Scanner.wrapCallback mean we have to wakeUpLooper.
-        if (wakeUpLooper) {
-            Thread.sleep(100)
-            ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
-        }
+        // TODO loopers in Scanner.wrapCallback mean we have to wakeUpLooper.
+        Thread.sleep(100)
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         return result.take()
     }
 
     private fun assertOnSuccessCallback(function: (ScannerCallback) -> Unit) {
         var x = 0
-        callBlocking({ function(it) }, wrappedScannerCallback(
-            onSuccess = { x = 1 },
-            onFailure = {}), true)
+        callBlocking(
+            { function(it) },
+            wrappedScannerCallback(
+                onSuccess = { x = 1 },
+                onFailure = {},
+            ),
+        )
         Assert.assertEquals(1, x)
     }
 
-    private fun assertOutgoingMessageIs(msgToScanner: String, position: Int = 0) {
-        assert(testObserver.values()[position]?.contentEquals(byteArrayFromHexString(msgToScanner))
-            ?: false)
+    private fun assertOutgoingMessageIs(
+        msgToScanner: String,
+        position: Int = 0,
+    ) {
+        assert(receivedValues[position].contentEquals(byteArrayFromHexString(msgToScanner)))
     }
 
-    private fun invokePrivateMethod(scannerObject: Scanner, name: String) {
+    private fun invokePrivateMethod(
+        scannerObject: Scanner,
+        name: String,
+    ) {
         val method = Scanner::class.java.getDeclaredMethod(name)
         method.isAccessible = true
         method.invoke(scannerObject)
@@ -151,24 +153,24 @@ class OutgoingMessagesToScannerTest {
 
     companion object {
         // Expected outgoing messages to the scanner
-        private const val un20WakeUp = "fafafafa0c001000f5f5f5f5"
-        private const val getSensorInfo = "fafafafa0c000000f5f5f5f5"
-        private const val resetUI = "fafafafa1600020001010000000000000000f5f5f5f5"
-        private const val getImageQuality = "fafafafa0c000b00f5f5f5f5"
-        private const val generateTemplateRequest = "fafafafa0c000c00f5f5f5f5"
-        private const val getTemplateFragment0 = "fafafafa0e0016000000f5f5f5f5"
-        private const val getTemplateFragment1 = "fafafafa0e0016000100f5f5f5f5"
-        private const val getTemplateFragment2 = "fafafafa0e0016000200f5f5f5f5"
-        private const val getRunningBank = "fafafafa0c001e00f5f5f5f5"
-        private const val setRunningBank = "fafafafa0f001f00010100f5f5f5f5"
-        private const val crashVero0 = "fafafafa0d00200000f5f5f5f5"
+        private const val WAKE_UP_MESSAGE = "fafafafa0c001000f5f5f5f5"
+        private const val SENSOR_INFO_REQUEST = "fafafafa0c000000f5f5f5f5"
+        private const val RESET_UI_COMMAND = "fafafafa1600020001010000000000000000f5f5f5f5"
+        private const val GET_IMAGE_QUALITY = "fafafafa0c000b00f5f5f5f5"
+        private const val GET_TEMPLATE_REQUEST = "fafafafa0c000c00f5f5f5f5"
+        private const val GET_TEMPLATE_FRAGMENT_0 = "fafafafa0e0016000000f5f5f5f5"
+        private const val GET_TEMPLATE_FRAGMENT_1 = "fafafafa0e0016000100f5f5f5f5"
+        private const val GET_TEMPLATE_FRAGMENT_2 = "fafafafa0e0016000200f5f5f5f5"
+        private const val GET_RUNNING_BANK = "fafafafa0c001e00f5f5f5f5"
+        private const val SET_RUNNING_BANK = "fafafafa0f001f00010100f5f5f5f5"
+        private const val CRASH_VERO_0 = "fafafafa0d00200000f5f5f5f5"
 
-        private const val mockMetaFilesize = 108848
-        private const val mockMetaCrc = 64851
-        private val mockMeta = arrayListOf(mockMetaFilesize, mockMetaCrc)
-        private const val setMetaData = "fafafafa12001d0030a9010053fdf5f5f5f5"
+        private const val META_FILE_SIZE = 108848
+        private const val META_CRC = 64851
+        private val mockMeta = arrayListOf(META_FILE_SIZE, META_CRC)
+        private const val META_DATA_COMMAND = "fafafafa12001d0030a9010053fdf5f5f5f5"
 
-        private const val mockOtaPacket0 = ":020000040000FA\n" +
+        private const val OTA_PACKET_0 = ":020000040000FA\n" +
             ":10000000B45100208D03001BB902001BE54A001B00\n" +
             ":10001000C102001BC502001BC902001BD254FF3DD8\n" +
             ":10002000000000000000000000000000191B001B81\n" +
@@ -185,7 +187,7 @@ class OutgoingMessagesToScannerTest {
             ":1000D0008754001B9154001B9B54001BA554001B0C\n" +
             ":1000E0006903001B6D03001B7103001B7503001BDC\n" +
             ":1000F00000000000000000007903001B7D03001BCE\n"
-        private const val setOtaPacket0 = "fafafafa34031c0000000000d00200003" +
+        private const val SET_OTA_PACKET_0 = "fafafafa34031c0000000000d00200003" +
             "a30323030303030343030303046410a3a31303030303030304234" +
             "35313030323038443033303031424239303230303142453534413" +
             "030314230300a3a31303030313030304331303230303142433530" +
@@ -217,7 +219,5 @@ class OutgoingMessagesToScannerTest {
             "00000000000000000000000000000000000000000000000000000" +
             "00000000000000000000000000000000000000000000000000000" +
             "000000000f5f5f5f5"
-
     }
-
 }

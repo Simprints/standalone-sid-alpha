@@ -4,8 +4,8 @@ import com.google.common.truth.Truth.assertThat
 import com.simprints.infra.authstore.AuthStore
 import com.simprints.infra.config.store.local.models.ProtoProject
 import com.simprints.infra.config.store.testtools.protoProject
-import com.simprints.infra.realm.RealmWrapper
-import com.simprints.infra.realm.models.DbProject
+import com.simprints.infra.enrolment.records.realm.store.RealmWrapper
+import com.simprints.infra.enrolment.records.realm.store.models.DbProject
 import io.mockk.CapturingSlot
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -23,9 +23,7 @@ import org.junit.Before
 import org.junit.Test
 
 class ProjectRealmMigrationTest {
-
     companion object {
-
         private const val PROJECT_ID = "projectId"
     }
 
@@ -68,24 +66,22 @@ class ProjectRealmMigrationTest {
     }
 
     @Test
-    fun `shouldMigrate should return true only if the project is signed in and the current data empty`() =
-        runTest {
-            every { authStore.signedInProjectId } returns "project_id"
+    fun `shouldMigrate should return true only if the project is signed in and the current data empty`() = runTest {
+        every { authStore.signedInProjectId } returns "project_id"
 
-            val shouldMigrate =
-                projectRealmMigration.shouldMigrate(ProtoProject.getDefaultInstance())
-            assertThat(shouldMigrate).isTrue()
-        }
+        val shouldMigrate =
+            projectRealmMigration.shouldMigrate(ProtoProject.getDefaultInstance())
+        assertThat(shouldMigrate).isTrue()
+    }
 
     @Test
-    fun `shouldMigrate should return false if the project is not signed in`() =
-        runTest {
-            every { authStore.signedInProjectId } returns ""
+    fun `shouldMigrate should return false if the project is not signed in`() = runTest {
+        every { authStore.signedInProjectId } returns ""
 
-            val shouldMigrate =
-                projectRealmMigration.shouldMigrate(ProtoProject.getDefaultInstance())
-            assertThat(shouldMigrate).isFalse()
-        }
+        val shouldMigrate =
+            projectRealmMigration.shouldMigrate(ProtoProject.getDefaultInstance())
+        assertThat(shouldMigrate).isFalse()
+    }
 
     @Test
     fun `shouldMigrate should return false if the current data is not empty`() = runTest {
@@ -110,7 +106,11 @@ class ProjectRealmMigrationTest {
         dbProject.id = "id"
         dbProject.name = "project name"
         val expectedProtoProject =
-            ProtoProject.newBuilder().setId("id").setName("project name").build()
+            ProtoProject
+                .newBuilder()
+                .setId("id")
+                .setName("project name")
+                .build()
 
         every { authStore.signedInProjectId } returns PROJECT_ID
         every { realmQuery.first() } returns mockQueryResult(dbProject)

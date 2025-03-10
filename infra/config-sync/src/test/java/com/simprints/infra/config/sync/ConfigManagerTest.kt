@@ -6,12 +6,13 @@ import com.simprints.infra.config.store.models.DeviceConfiguration
 import com.simprints.infra.config.store.models.Project
 import com.simprints.infra.config.store.models.ProjectConfiguration
 import com.simprints.infra.config.store.models.ProjectWithConfig
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -31,6 +32,9 @@ class ConfigManagerTest {
     private lateinit var enrolmentRecordRepository: EnrolmentRecordRepository
 
     @MockK
+    private lateinit var configSyncCache: ConfigSyncCache
+
+    @MockK
     private lateinit var projectWithConfig: ProjectWithConfig
 
     @MockK
@@ -47,7 +51,8 @@ class ConfigManagerTest {
         MockKAnnotations.init(this, relaxed = true)
         configManager = ConfigManager(
             configRepository = configRepository,
-            enrolmentRecordRepository = enrolmentRecordRepository
+            enrolmentRecordRepository = enrolmentRecordRepository,
+            configSyncCache = configSyncCache,
         )
     }
 
@@ -57,6 +62,8 @@ class ConfigManagerTest {
 
         val refreshedProject = configManager.refreshProject(PROJECT_ID)
         assertThat(refreshedProject).isEqualTo(projectWithConfig)
+
+        coVerify { configSyncCache.saveUpdateTime() }
     }
 
     @Test
@@ -113,5 +120,35 @@ class ConfigManagerTest {
         configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE)
         coVerify(exactly = 1) { configRepository.getPrivacyNotice(PROJECT_ID, LANGUAGE) }
     }
+    
+    @Test
+    fun `watchProjectConfiguration should emit values from the local data source`() = runTest {
+        val config1 = projectConfiguration.copy(projectId = "project1")
+        val config2 = projectConfiguration.copy(projectId = "project2")
 
+        coEvery { configRepository.watchProjectConfiguration() } returns kotlinx.coroutines.flow.flow {
+            emit(config1)
+            emit(config2)
+        }
+
+        val emittedConfigs = configManager.watchProjectConfiguration().toList()
+
+        assertThat(emittedConfigs).hasSize(2)
+        assertThat(emittedConfigs[0]).isEqualTo(config1)
+        assertThat(emittedConfigs[1]).isEqualTo(config2)
+    }
+
+    @Test
+    fun `watchProjectConfiguration should call getProjectConfiguration on start to invoke download if config empty`() = runTest {
+        coEvery { configRepository.watchProjectConfiguration() } returns kotlinx.coroutines.flow.flow {
+            emit(projectConfiguration)
+        }
+
+        val emittedConfigs = configManager.watchProjectConfiguration().toList()
+
+        coVerify(exactly = 1) { configRepository.getProjectConfiguration() }
+
+        assertThat(emittedConfigs).hasSize(1)
+        assertThat(emittedConfigs[0]).isEqualTo(projectConfiguration)
+    }
 }

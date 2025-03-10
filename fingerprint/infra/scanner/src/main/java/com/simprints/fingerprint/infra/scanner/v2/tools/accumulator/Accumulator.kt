@@ -1,6 +1,7 @@
 package com.simprints.fingerprint.infra.scanner.v2.tools.accumulator
 
-import io.reactivex.Flowable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 /**
  * An [Accumulator] is used to transform a stream of [Fragment]s into [Element]s.
@@ -32,9 +33,8 @@ abstract class Accumulator<in Fragment, in FragmentCollection, Element>(
     private val computeElementLengthFromCollection: (FragmentCollection) -> Int,
     private val getCollectionLength: FragmentCollection.() -> Int,
     private val sliceCollection: FragmentCollection.(IntRange) -> FragmentCollection,
-    private val buildElementFromCompleteCollection: (FragmentCollection) -> Element
+    private val buildElementFromCompleteCollection: (FragmentCollection) -> Element,
 ) {
-
     private var fragmentCollection: FragmentCollection = initialFragmentCollection
 
     private var currentElementLength: Int? = null
@@ -44,21 +44,13 @@ abstract class Accumulator<in Fragment, in FragmentCollection, Element>(
         updateCurrentElementLength()
     }
 
-    fun takeElements(): Flowable<Element> =
-        Flowable.generate { emitter ->
-            try {
-                if (containsCompleteElement()) {
-                    emitter.onNext(takeElement()!!)
-                } else {
-                    emitter.onComplete()
-                }
-            } catch (e: Throwable) {
-                emitter.onError(e)
-            }
+    fun takeElements(): Flow<Element> = flow {
+        while (containsCompleteElement()) {
+            emit(takeElement())
         }
+    }
 
-    private fun containsCompleteElement() =
-        currentElementLength?.let { fragmentCollection.getCollectionLength() >= it } ?: false
+    private fun containsCompleteElement() = currentElementLength?.let { fragmentCollection.getCollectionLength() >= it } ?: false
 
     private fun takeElement(): Element {
         currentElementLength?.let { packetLength ->

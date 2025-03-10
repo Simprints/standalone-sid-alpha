@@ -6,16 +6,16 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.simprints.core.tools.extentions.getIntWithColumnName
 import com.simprints.core.tools.extentions.getLongWithColumnName
 import com.simprints.core.tools.extentions.getStringWithColumnName
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 import net.sqlcipher.database.SQLiteDatabase
 import org.json.JSONObject
 
 internal class EventMigration14to15 : Migration(14, 15) {
-
     override fun migrate(database: SupportSQLiteDatabase) {
-        Simber.d("Migrating room db from schema 14 to schema 15.")
+        Simber.i("Migrating room db from schema 14 to schema 15.", tag = MIGRATION)
         updateSessionIdtoScopeIdColumn(database)
-        Simber.d("Migration from schema 14 to schema 15 done.")
+        Simber.i("Migration from schema 14 to schema 15 done.", tag = MIGRATION)
     }
 
     private fun updateSessionIdtoScopeIdColumn(database: SupportSQLiteDatabase) {
@@ -31,7 +31,8 @@ internal class EventMigration14to15 : Migration(14, 15) {
                     `scopeId` TEXT,
                     `eventJson` TEXT NOT NULL,
                     PRIMARY KEY(`id`)
-                )""".trimMargin()
+                )
+            """.trimMargin(),
         )
 
         // copy existing data into new table
@@ -48,10 +49,11 @@ internal class EventMigration14to15 : Migration(14, 15) {
                 val sessionId = cursor.getStringWithColumnName("sessionId")
                 val jsonData = cursor.getStringWithColumnName("eventJson") ?: break
 
-                val updatedJson = JSONObject(jsonData).apply {
-                    put("scopeId", optString("sessionId"))
-                    remove("sessionId")
-                }.toString()
+                val updatedJson = JSONObject(jsonData)
+                    .apply {
+                        put("scopeId", optString("sessionId"))
+                        remove("sessionId")
+                    }.toString()
 
                 database.insert(
                     TEMP_EVENT_TABLE_NAME,
@@ -65,7 +67,7 @@ internal class EventMigration14to15 : Migration(14, 15) {
                         put("projectId", projectId)
                         put("scopeId", sessionId)
                         put("eventJson", updatedJson)
-                    }
+                    },
                 )
             }
         }
@@ -77,9 +79,7 @@ internal class EventMigration14to15 : Migration(14, 15) {
     }
 
     companion object {
-
         private const val TEMP_EVENT_TABLE_NAME = "DbEvent_Temp"
         private const val TABLE_NAME = "DbEvent"
     }
 }
-

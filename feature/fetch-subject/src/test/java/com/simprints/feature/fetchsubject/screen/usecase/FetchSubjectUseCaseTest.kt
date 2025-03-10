@@ -2,9 +2,9 @@ package com.simprints.feature.fetchsubject.screen.usecase
 
 import com.google.common.truth.Truth.assertThat
 import com.simprints.feature.fetchsubject.screen.FetchSubjectState
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
-import com.simprints.infra.enrolment.records.store.domain.models.Subject
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectQuery
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.domain.models.Subject
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectQuery
 import com.simprints.infra.eventsync.EventSyncManager
 import com.simprints.infra.network.ConnectivityTracker
 import io.mockk.MockKAnnotations
@@ -17,7 +17,6 @@ import org.junit.Before
 import org.junit.Test
 
 internal class FetchSubjectUseCaseTest {
-
     @MockK
     lateinit var enrolmentRecordRepository: EnrolmentRecordRepository
 
@@ -30,9 +29,7 @@ internal class FetchSubjectUseCaseTest {
     @MockK
     lateinit var subject: Subject
 
-
     private lateinit var useCase: FetchSubjectUseCase
-
 
     @Before
     fun setUp() {
@@ -120,10 +117,8 @@ internal class FetchSubjectUseCaseTest {
         assertThat(result).isInstanceOf(FetchSubjectState.ConnectionError::class.java)
     }
 
-
     companion object {
         private const val DEFAULT_PROJECT_ID = "projectId"
         private const val DEFAULT_SUBJECT_ID = "subject"
     }
-
 }

@@ -22,6 +22,8 @@ import com.simprints.feature.enrollast.screen.EnrolLastState.ErrorType.DUPLICATE
 import com.simprints.feature.enrollast.screen.EnrolLastState.ErrorType.GENERAL_ERROR
 import com.simprints.infra.config.store.models.GeneralConfiguration.Modality
 import com.simprints.infra.events.event.domain.models.AlertScreenEvent
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
+import com.simprints.infra.logging.Simber
 import com.simprints.infra.uibase.navigation.finishWithResult
 import com.simprints.infra.uibase.navigation.handleResult
 import com.simprints.infra.uibase.navigation.navigateSafely
@@ -30,17 +32,20 @@ import com.simprints.infra.resources.R as IDR
 
 @AndroidEntryPoint
 internal class EnrolLastBiometricFragment : Fragment(R.layout.fragment_enrol_last) {
-
     private val viewModel: EnrolLastBiometricViewModel by viewModels()
     private val args: EnrolLastBiometricFragmentArgs by navArgs()
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("EnrolLastBiometricFragment started", tag = ORCHESTRATION)
 
         findNavController().handleResult<AlertResult>(
             viewLifecycleOwner,
             R.id.enrolLastBiometricFragment,
-            AlertContract.DESTINATION
+            AlertContract.DESTINATION,
         ) { finishWithSubjectId(null) }
 
         viewModel.finish.observe(viewLifecycleOwner, LiveDataEventWithContentObserver { finishWithResult(it) })
@@ -55,17 +60,20 @@ internal class EnrolLastBiometricFragment : Fragment(R.layout.fragment_enrol_las
         }
     }
 
-    private fun showError(errorType: ErrorType, modalities: List<Modality>) {
+    private fun showError(
+        errorType: ErrorType,
+        modalities: List<Modality>,
+    ) {
         findNavController().navigateSafely(
             this,
             R.id.action_enrolLastBiometricFragment_to_errorFragment,
-            createAlertConfiguration(errorType, modalities).toArgs()
+            createAlertConfiguration(errorType, modalities).toArgs(),
         )
     }
 
     private fun createAlertConfiguration(
         errorType: ErrorType,
-        modalities: List<Modality>
+        modalities: List<Modality>,
     ) = alertConfiguration {
         color = AlertColor.Gray
         titleRes = IDR.string.enrol_last_biometrics_alert_title
@@ -80,17 +88,17 @@ internal class EnrolLastBiometricFragment : Fragment(R.layout.fragment_enrol_las
         GENERAL_ERROR -> IDR.string.enrol_last_biometrics_alert_message
     }
 
-    private fun getModalityName(modalities: List<Modality>) = modalities.let {
-        when {
-            it.size >= 2 -> IDR.string.enrol_last_biometrics_alert_message_all_param
-            it.contains(Modality.FACE) -> IDR.string.enrol_last_biometrics_alert_message_face_param
-            it.contains(Modality.FINGERPRINT) -> IDR.string.enrol_last_biometrics_alert_message_fingerprint_param
-            else -> IDR.string.enrol_last_biometrics_alert_message_all_param
-        }
-    }.let { getString(it) }
+    private fun getModalityName(modalities: List<Modality>) = modalities
+        .let {
+            when {
+                it.size >= 2 -> IDR.string.enrol_last_biometrics_alert_message_all_param
+                it.contains(Modality.FACE) -> IDR.string.enrol_last_biometrics_alert_message_face_param
+                it.contains(Modality.FINGERPRINT) -> IDR.string.enrol_last_biometrics_alert_message_fingerprint_param
+                else -> IDR.string.enrol_last_biometrics_alert_message_all_param
+            }
+        }.let { getString(it) }
 
     private fun finishWithSubjectId(newSubjectId: String?) {
         findNavController().finishWithResult(this, EnrolLastBiometricResult(newSubjectId))
     }
-
 }

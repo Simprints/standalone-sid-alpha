@@ -4,9 +4,10 @@ import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.datastore.core.DataMigration
 import com.simprints.core.tools.utils.LanguageHelper
-import com.simprints.infra.config.store.local.models.ProtoDeviceConfiguration
-import com.simprints.infra.logging.Simber
 import com.simprints.infra.authstore.AuthStore
+import com.simprints.infra.config.store.local.models.ProtoDeviceConfiguration
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
+import com.simprints.infra.logging.Simber
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -17,11 +18,11 @@ internal class DeviceConfigSharedPrefsMigration @Inject constructor(
     @ApplicationContext private val ctx: Context,
     private val authStore: AuthStore,
 ) : DataMigration<ProtoDeviceConfiguration> {
-
     private val prefs = ctx.getSharedPreferences(PREF_FILE_NAME, PREF_MODE)
 
     override suspend fun cleanUp() {
-        prefs.edit()
+        prefs
+            .edit()
             .remove(LANGUAGE_KEY)
             .remove(LANGUAGE_OVERRIDDEN_KEY)
             .remove(FINGERS_TO_COLLECT_KEY)
@@ -29,18 +30,19 @@ internal class DeviceConfigSharedPrefsMigration @Inject constructor(
             .remove(SELECTED_MODULES_KEY)
             .remove(LAST_INSTRUCTION_ID_KEY)
             .apply()
-        Simber.i("Migration of device configuration to Datastore done")
+        Simber.i("Migration of device configuration to Datastore done", tag = MIGRATION)
     }
 
     override suspend fun migrate(currentData: ProtoDeviceConfiguration): ProtoDeviceConfiguration {
-        Simber.i("Start migration of device configuration to Datastore")
+        Simber.i("Start migration of device configuration to Datastore", tag = MIGRATION)
         return currentData.let {
             val proto = it.toBuilder()
 
             val language = prefs.getString(LANGUAGE_KEY, "")
             if (!language.isNullOrEmpty()) {
                 val isOverridden = prefs.getBoolean(LANGUAGE_OVERRIDDEN_KEY, false)
-                proto.language = ProtoDeviceConfiguration.Language.newBuilder()
+                proto.language = ProtoDeviceConfiguration.Language
+                    .newBuilder()
                     .setLanguage(language)
                     .setIsOverwritten(isOverridden)
                     .build()

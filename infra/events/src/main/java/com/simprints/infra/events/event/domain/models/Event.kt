@@ -9,6 +9,7 @@ import com.simprints.infra.events.event.domain.models.EventType.Companion.AGE_GR
 import com.simprints.infra.events.event.domain.models.EventType.Companion.ALERT_SCREEN_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.AUTHENTICATION_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.AUTHORIZATION_KEY
+import com.simprints.infra.events.event.domain.models.EventType.Companion.BIOMETRIC_REFERENCE_CREATION_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.CALLBACK_CONFIRMATION_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.CALLBACK_ENROLMENT_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.CALLBACK_ERROR_KEY
@@ -24,8 +25,8 @@ import com.simprints.infra.events.event.domain.models.EventType.Companion.CANDID
 import com.simprints.infra.events.event.domain.models.EventType.Companion.COMPLETION_CHECK_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.CONNECTIVITY_SNAPSHOT_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.CONSENT_KEY
-import com.simprints.infra.events.event.domain.models.EventType.Companion.ENROLMENT_V1_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.ENROLMENT_V2_KEY
+import com.simprints.infra.events.event.domain.models.EventType.Companion.ENROLMENT_V4_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.EVENT_DOWN_SYNC_REQUEST_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.EVENT_UP_SYNC_REQUEST_KEY
 import com.simprints.infra.events.event.domain.models.EventType.Companion.FACE_CAPTURE_BIOMETRICS_KEY
@@ -68,12 +69,11 @@ import com.simprints.infra.events.event.domain.models.fingerprint.FingerprintCap
 import com.simprints.infra.events.event.domain.models.fingerprint.FingerprintCaptureEvent
 import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestEvent
 
-
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
     include = JsonTypeInfo.As.EXISTING_PROPERTY,
     property = "type",
-    visible = true
+    visible = true,
 )
 @JsonSubTypes(
     JsonSubTypes.Type(value = ConfirmationCallbackEvent::class, name = CALLBACK_CONFIRMATION_KEY),
@@ -81,7 +81,7 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = ErrorCallbackEvent::class, name = CALLBACK_ERROR_KEY),
     JsonSubTypes.Type(
         value = IdentificationCallbackEvent::class,
-        name = CALLBACK_IDENTIFICATION_KEY
+        name = CALLBACK_IDENTIFICATION_KEY,
     ),
     JsonSubTypes.Type(value = RefusalCallbackEvent::class, name = CALLBACK_REFUSAL_KEY),
     JsonSubTypes.Type(value = VerificationCallbackEvent::class, name = CALLBACK_VERIFICATION_KEY),
@@ -89,23 +89,23 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = EnrolmentCalloutEvent::class, name = CALLOUT_ENROLMENT_KEY),
     JsonSubTypes.Type(
         value = EnrolmentLastBiometricsCalloutEvent::class,
-        name = CALLOUT_LAST_BIOMETRICS_KEY
+        name = CALLOUT_LAST_BIOMETRICS_KEY,
     ),
     JsonSubTypes.Type(value = IdentificationCalloutEvent::class, name = CALLOUT_IDENTIFICATION_KEY),
     JsonSubTypes.Type(value = VerificationCalloutEvent::class, name = CALLOUT_VERIFICATION_KEY),
     JsonSubTypes.Type(
         value = FaceCaptureConfirmationEvent::class,
-        name = FACE_CAPTURE_CONFIRMATION_KEY
+        name = FACE_CAPTURE_CONFIRMATION_KEY,
     ),
     JsonSubTypes.Type(value = FaceCaptureEvent::class, name = FACE_CAPTURE_KEY),
     JsonSubTypes.Type(
         value = FaceCaptureBiometricsEvent::class,
-        name = FACE_CAPTURE_BIOMETRICS_KEY
+        name = FACE_CAPTURE_BIOMETRICS_KEY,
     ),
     JsonSubTypes.Type(value = FaceFallbackCaptureEvent::class, name = FACE_FALLBACK_CAPTURE_KEY),
     JsonSubTypes.Type(
         value = FaceOnboardingCompleteEvent::class,
-        name = FACE_ONBOARDING_COMPLETE_KEY
+        name = FACE_ONBOARDING_COMPLETE_KEY,
     ),
     JsonSubTypes.Type(value = AlertScreenEvent::class, name = ALERT_SCREEN_KEY),
     JsonSubTypes.Type(value = AuthenticationEvent::class, name = AUTHENTICATION_KEY),
@@ -114,12 +114,12 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = CompletionCheckEvent::class, name = COMPLETION_CHECK_KEY),
     JsonSubTypes.Type(value = ConnectivitySnapshotEvent::class, name = CONNECTIVITY_SNAPSHOT_KEY),
     JsonSubTypes.Type(value = ConsentEvent::class, name = CONSENT_KEY),
-    JsonSubTypes.Type(value = EnrolmentEventV1::class, name = ENROLMENT_V1_KEY),
     JsonSubTypes.Type(value = EnrolmentEventV2::class, name = ENROLMENT_V2_KEY),
+    JsonSubTypes.Type(value = EnrolmentEventV4::class, name = ENROLMENT_V4_KEY),
     JsonSubTypes.Type(value = FingerprintCaptureEvent::class, name = FINGERPRINT_CAPTURE_KEY),
     JsonSubTypes.Type(
         value = FingerprintCaptureBiometricsEvent::class,
-        name = FINGERPRINT_CAPTURE_BIOMETRICS_KEY
+        name = FINGERPRINT_CAPTURE_BIOMETRICS_KEY,
     ),
     JsonSubTypes.Type(value = GuidSelectionEvent::class, name = GUID_SELECTION_KEY),
     JsonSubTypes.Type(value = IntentParsingEvent::class, name = INTENT_PARSING_KEY),
@@ -131,7 +131,7 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = ScannerConnectionEvent::class, name = SCANNER_CONNECTION_KEY),
     JsonSubTypes.Type(
         value = ScannerFirmwareUpdateEvent::class,
-        name = SCANNER_FIRMWARE_UPDATE_KEY
+        name = SCANNER_FIRMWARE_UPDATE_KEY,
     ),
     JsonSubTypes.Type(value = SuspiciousIntentEvent::class, name = SUSPICIOUS_INTENT_KEY),
     JsonSubTypes.Type(value = Vero2InfoSnapshotEvent::class, name = VERO_2_INFO_SNAPSHOT_KEY),
@@ -139,9 +139,9 @@ import com.simprints.infra.events.event.domain.models.upsync.EventUpSyncRequestE
     JsonSubTypes.Type(value = EventUpSyncRequestEvent::class, name = EVENT_UP_SYNC_REQUEST_KEY),
     JsonSubTypes.Type(value = LicenseCheckEvent::class, name = LICENSE_CHECK_KEY),
     JsonSubTypes.Type(value = AgeGroupSelectionEvent::class, name = AGE_GROUP_SELECTION_KEY),
+    JsonSubTypes.Type(value = BiometricReferenceCreationEvent::class, name = BIOMETRIC_REFERENCE_CREATION_KEY),
 )
 abstract class Event {
-
     abstract val id: String
     abstract val type: EventType
     abstract val payload: EventPayload
@@ -150,15 +150,11 @@ abstract class Event {
     abstract var projectId: String?
 
     @JsonIgnore
-    abstract fun getTokenizedFields(): Map<TokenKeyType, TokenizableString>
+    abstract fun getTokenizableFields(): Map<TokenKeyType, TokenizableString>
+
     abstract fun setTokenizedFields(map: Map<TokenKeyType, TokenizableString>): Event
 
-    override fun equals(other: Any?): Boolean {
-        return other is Event && other.id == id
-    }
+    override fun equals(other: Any?): Boolean = other is Event && other.id == id
 
-    override fun hashCode(): Int {
-        return id.hashCode()
-    }
-
+    override fun hashCode(): Int = id.hashCode()
 }

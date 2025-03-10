@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 internal interface EventRoomDao {
-
     @Query("select * from DbEvent order by createdAt_unixMs desc")
     suspend fun loadAll(): List<DbEvent>
 
@@ -26,6 +25,15 @@ internal interface EventRoomDao {
     @Query("select count(*) from DbEvent where type = :type")
     fun observeCountFromType(type: EventType): Flow<Int>
 
+    @Query(
+        """
+        select count(*) from DbEvent 
+        left join DbEventScope on DbEvent.scopeId = DbEventScope.id 
+        where DbEventScope.end_unixMs is not null
+        """,
+    )
+    fun observeCountInClosedScopes(): Flow<Int>
+
     @Query("delete from DbEvent where scopeId = :scopeId")
     suspend fun deleteAllFromScope(scopeId: String)
 
@@ -37,5 +45,4 @@ internal interface EventRoomDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(dbEvent: DbEvent)
-
 }

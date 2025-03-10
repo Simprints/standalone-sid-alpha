@@ -1,28 +1,32 @@
 package com.simprints.infra.logging
 
 import android.content.Context
+import co.touchlab.kermit.LogcatWriter
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.simprints.infra.logging.trees.AnalyticsTree
-import com.simprints.infra.logging.trees.CrashReportingTree
-import timber.log.Timber
+import com.simprints.infra.logging.writers.AnalyticsPropertyLogWriter
+import com.simprints.infra.logging.writers.CrashlyticsLogWriter
+import com.simprints.infra.logging.writers.FileLogWriter
 
 object SimberBuilder {
-
     /**
      * Simber needs to be initialized with the application context. It can be initialized multiple
      * times without issue. Re-initializing Simber uproots and replants all trees.
      * @param context Application Context
      */
     fun initialize(context: Context) {
-        Timber.uprootAll()
-
         if (BuildConfig.DEBUG) {
-            Timber.plant(Timber.DebugTree())
+            Logger.setLogWriters(LogcatWriter())
+            Logger.setMinSeverity(Severity.Debug)
         } else {
-            Timber.plant(CrashReportingTree(FirebaseCrashlytics.getInstance()))
-            Timber.plant(AnalyticsTree(FirebaseAnalytics.getInstance(context)))
+            Logger.setLogWriters(
+                AnalyticsPropertyLogWriter(FirebaseAnalytics.getInstance(context)),
+                CrashlyticsLogWriter(FirebaseCrashlytics.getInstance()),
+                FileLogWriter(context),
+            )
+            Logger.setMinSeverity(Severity.Info)
         }
     }
-
 }

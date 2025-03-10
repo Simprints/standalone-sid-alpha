@@ -14,12 +14,12 @@ import com.simprints.feature.enrollast.screen.EnrolLastState.ErrorType.GENERAL_E
 import com.simprints.feature.enrollast.screen.usecase.BuildSubjectUseCase
 import com.simprints.feature.enrollast.screen.usecase.HasDuplicateEnrolmentsUseCase
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
-import com.simprints.infra.enrolment.records.store.domain.models.Subject
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectAction
-import com.simprints.infra.events.SessionEventRepository
-import com.simprints.infra.events.event.domain.models.EnrolmentEventV2
-import com.simprints.infra.events.event.domain.models.PersonCreationEvent
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.domain.models.Subject
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectAction
+import com.simprints.infra.events.event.domain.models.BiometricReferenceCreationEvent
+import com.simprints.infra.events.event.domain.models.EnrolmentEventV4
+import com.simprints.infra.events.session.SessionEventRepository
 import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ENROLMENT
 import com.simprints.infra.logging.Simber
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +35,6 @@ internal class EnrolLastBiometricViewModel @Inject constructor(
     private val hasDuplicateEnrolments: HasDuplicateEnrolmentsUseCase,
     private val buildSubject: BuildSubjectUseCase,
 ) : ViewModel() {
-
     val finish: LiveData<LiveDataEventWithContent<EnrolLastState>>
         get() = _finish
     private var _finish = MutableLiveData<LiveDataEventWithContent<EnrolLastState>>()
@@ -52,6 +51,7 @@ internal class EnrolLastBiometricViewModel @Inject constructor(
         enrolWasAttempted = true
 
         val projectConfig = configManager.getProjectConfiguration()
+        val project = configManager.getProject(projectConfig.projectId)
         val modalities = projectConfig.general.modalities
 
         val previousLastEnrolmentResult = getPreviousEnrolmentResult(params.steps)
@@ -59,7 +59,7 @@ internal class EnrolLastBiometricViewModel @Inject constructor(
             _finish.send(
                 previousLastEnrolmentResult.subjectId
                     ?.let { EnrolLastState.Success(it) }
-                    ?: EnrolLastState.Failed(GENERAL_ERROR,modalities)
+                    ?: EnrolLastState.Failed(GENERAL_ERROR, modalities),
             )
             return@launch
         }
@@ -70,16 +70,11 @@ internal class EnrolLastBiometricViewModel @Inject constructor(
 
         try {
             val subject = buildSubject(params)
-
-            Simber.tag(ENROLMENT.name).d("Enrolment in progress")
             registerEvent(subject)
-            Simber.tag(ENROLMENT.name).d("Create a subject record")
-            enrolmentRecordRepository.performActions(listOf(SubjectAction.Creation(subject)))
-            Simber.tag(ENROLMENT.name).d("Done!")
-
+            enrolmentRecordRepository.performActions(listOf(SubjectAction.Creation(subject)), project)
             _finish.send(EnrolLastState.Success(subject.subjectId))
         } catch (t: Throwable) {
-            Simber.tag(ENROLMENT.name).e(t)
+            Simber.e("Enrolment failed", t, tag = ENROLMENT)
             _finish.send(EnrolLastState.Failed(GENERAL_ERROR, modalities))
         }
     }
@@ -88,21 +83,23 @@ internal class EnrolLastBiometricViewModel @Inject constructor(
         steps.filterIsInstance<EnrolLastBiometricStepResult.EnrolLastBiometricsResult>().firstOrNull()
 
     private suspend fun registerEvent(subject: Subject) {
-        Simber.tag(ENROLMENT.name).d("Register events for enrolments")
+        Simber.d("Register events for enrolments", tag = ENROLMENT)
 
-        val personCreationEvent = eventRepository.getEventsInCurrentSession()
-            .filterIsInstance<PersonCreationEvent>()
+        val biometricReferenceIds = eventRepository
+            .getEventsInCurrentSession()
+            .filterIsInstance<BiometricReferenceCreationEvent>()
             .sortedByDescending { it.payload.createdAt }
-            .first()
+            .map { it.payload.id }
 
-        eventRepository.addOrUpdateEvent(EnrolmentEventV2(
-            timeHelper.now(),
-            subject.subjectId,
-            subject.projectId,
-            subject.moduleId,
-            subject.attendantId,
-            personCreationEvent.id
-        ))
+        eventRepository.addOrUpdateEvent(
+            EnrolmentEventV4(
+                timeHelper.now(),
+                subject.subjectId,
+                subject.projectId,
+                subject.moduleId,
+                subject.attendantId,
+                biometricReferenceIds,
+            ),
+        )
     }
-
 }

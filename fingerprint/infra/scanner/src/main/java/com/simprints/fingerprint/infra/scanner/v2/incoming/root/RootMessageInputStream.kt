@@ -2,42 +2,27 @@ package com.simprints.fingerprint.infra.scanner.v2.incoming.root
 
 import com.simprints.fingerprint.infra.scanner.v2.domain.root.RootResponse
 import com.simprints.fingerprint.infra.scanner.v2.incoming.common.MessageInputStream
-import com.simprints.fingerprint.infra.scanner.v2.tools.reactive.filterCast
-import com.simprints.fingerprint.infra.scanner.v2.tools.reactive.subscribeOnIoAndPublish
-import io.reactivex.Flowable
-import io.reactivex.Single
-import io.reactivex.disposables.Disposable
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
 /**
- * Takes an InputStream and transforms it into a Flowable<RootResponse> for use while the Vero is in
+ * Takes an InputStream and transforms it into a Flow <RootResponse> for use while the Vero is in
  * Root Mode.
  */
-class RootMessageInputStream(private val rootResponseAccumulator: RootResponseAccumulator) : MessageInputStream {
+class RootMessageInputStream @Inject constructor(
+    private val rootResponseAccumulator: RootResponseAccumulator,
+) : MessageInputStream {
+    lateinit var rootResponseStream: Flow<RootResponse>
 
-    var rootResponseStream: Flowable<RootResponse>? = null
-
-    private var rootResponseStreamDisposable: Disposable? = null
-
-    override fun connect(flowableInputStream: Flowable<ByteArray>) {
-        rootResponseStream = transformToRootResponseStream(flowableInputStream)
-            .subscribeOnIoAndPublish()
-            .also {
-                rootResponseStreamDisposable = it.connect()
-            }
+    override fun connect(inputStreamFlow: Flow<ByteArray>) {
+        rootResponseStream = inputStreamFlow.toRootMessageStream(rootResponseAccumulator)
     }
-
-    private fun transformToRootResponseStream(flowableInputStream: Flowable<ByteArray>) =
-        flowableInputStream.toRootMessageStream(rootResponseAccumulator)
 
     override fun disconnect() {
-        rootResponseStreamDisposable?.dispose()
+        // No action needed as this stream is not usable anymore
     }
 
-    inline fun <reified R : RootResponse> receiveResponse(): Single<R> =
-        Single.defer {
-            rootResponseStream
-                ?.filterCast<R>()
-                ?.firstOrError()
-                ?: Single.error(IllegalStateException("Trying to receive response before connecting stream"))
-        }
+    suspend inline fun <reified R : RootResponse> receiveResponse(): R = rootResponseStream.filterIsInstance<R>().first()
 }

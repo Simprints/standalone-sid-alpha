@@ -8,11 +8,11 @@ android {
 
 dependencies {
     implementation(project(":fingerprint:infra:scanner"))
+    implementation(project(":fingerprint:infra:image-distortion-config"))
     implementation(project(":infra:license"))
     implementation(project(":infra:security"))
     implementation(project(":infra:recent-user-activity"))
     api(project(":fingerprint:infra:base-bio-sdk"))
-
 
 
 }

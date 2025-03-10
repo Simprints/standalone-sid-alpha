@@ -8,11 +8,10 @@ import io.mockk.every
 import org.junit.Test
 
 internal class EnrolLastBiometricsValidatorTest : ActionRequestValidatorTest(EnrolLastBiometricsActionFactory) {
-
     private val mockExtractor = EnrolLastBiometricsActionFactory.getMockExtractor()
 
     @Test
-    fun `should fail if not identification or enrolment session`() {
+    fun `should fail if no identification callback in session`() {
         val validator = EnrolLastBiometricsValidator(mockExtractor, RequestActionFactory.MOCK_SESSION_ID, false)
         assertThrows<InvalidRequestException> {
             validator.validate()

@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import com.simprints.core.tools.time.Timestamp
 import com.simprints.face.capture.models.FaceDetection
 import com.simprints.face.capture.usecases.BitmapToByteArrayUseCase
+import com.simprints.face.capture.usecases.IsUsingAutoCaptureUseCase
 import com.simprints.face.capture.usecases.SaveFaceImageUseCase
 import com.simprints.face.capture.usecases.SimpleCaptureEventReporter
 import com.simprints.face.infra.basebiosdk.initialization.FaceBioSdkInitializer
@@ -14,10 +15,10 @@ import com.simprints.infra.config.sync.ConfigManager
 import com.simprints.infra.license.LicenseRepository
 import com.simprints.infra.license.LicenseStatus
 import com.simprints.infra.license.SaveLicenseCheckEventUseCase
-import com.simprints.infra.license.models.Vendor
 import com.simprints.infra.license.models.License
 import com.simprints.infra.license.models.LicenseState
 import com.simprints.infra.license.models.LicenseVersion
+import com.simprints.infra.license.models.Vendor
 import com.simprints.testtools.common.coroutines.TestCoroutineRule
 import com.simprints.testtools.common.livedata.assertEventNotReceived
 import com.simprints.testtools.common.livedata.assertEventReceived
@@ -38,7 +39,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class FaceCaptureViewModelTest {
-
     @get:Rule
     val rule = InstantTaskExecutorRule()
 
@@ -69,13 +69,16 @@ class FaceCaptureViewModelTest {
     @MockK
     private lateinit var saveLicenseCheckEvent: SaveLicenseCheckEventUseCase
 
+    @MockK
+    private lateinit var isUsingAutoCapture: IsUsingAutoCaptureUseCase
+
     private lateinit var viewModel: FaceCaptureViewModel
 
     private val faceDetections = listOf<FaceDetection>(
         mockk(relaxed = true) {
             every { id } returns "FAKE_ID"
             every { bitmap } returns mockk {}
-        }
+        },
     )
 
     @Before
@@ -96,7 +99,8 @@ class FaceCaptureViewModelTest {
                 coEvery { this@mockk().initializer } returns faceBioSdkInitializer
             },
             saveLicenseCheckEvent,
-            "deviceId"
+            isUsingAutoCapture,
+            "deviceId",
         )
     }
 
@@ -116,6 +120,15 @@ class FaceCaptureViewModelTest {
         viewModel.captureFinished(faceDetections)
         viewModel.flowFinished()
         coVerify(atLeast = 1) { faceImageUseCase.invoke(any(), any()) }
+    }
+
+    @Test
+    fun `Save biometric reference creation when flow finishes`() {
+        viewModel.captureFinished(faceDetections)
+        viewModel.flowFinished()
+        coVerify(atLeast = 1) {
+            eventReporter.addBiometricReferenceCreationEvents(any(), any())
+        }
     }
 
     @Test
@@ -156,7 +169,7 @@ class FaceCaptureViewModelTest {
     }
 
     @Test
-    fun `test initFaceBioSdk should initialize faceBioSdk`() {
+    fun `test initFaceBioSdk should initialize faceBioSdk only once`() {
         // Given
         val license = "license"
         every { faceBioSdkInitializer.tryInitWithLicense(any(), license) } returns true
@@ -168,8 +181,11 @@ class FaceCaptureViewModelTest {
 
         // When
         viewModel.initFaceBioSdk(mockk())
+        viewModel.initFaceBioSdk(mockk())
+        viewModel.initFaceBioSdk(mockk())
+
         // Then
-        coVerify { faceBioSdkInitializer.tryInitWithLicense(any(), license) }
+        coVerify(exactly = 1) { faceBioSdkInitializer.tryInitWithLicense(any(), license) }
         assertThat(licenseStatusSlot.captured).isEqualTo(LicenseStatus.VALID)
     }
 
@@ -188,7 +204,7 @@ class FaceCaptureViewModelTest {
         } returns flowOf(
             LicenseState.Started,
             LicenseState.Downloading,
-            LicenseState.FinishedWithSuccess(License("2133-12-30T17:32:28Z", license,LicenseVersion("1.0")))
+            LicenseState.FinishedWithSuccess(License("2133-12-30T17:32:28Z", license, LicenseVersion("1.0"))),
         )
         coEvery { faceBioSdkInitializer.tryInitWithLicense(any(), license) } returns false
 
@@ -196,7 +212,7 @@ class FaceCaptureViewModelTest {
         viewModel.initFaceBioSdk(mockk())
         // Then
         viewModel.invalidLicense.assertEventReceived()
-        coVerify { licenseRepository.redownloadLicence(any(), any(), any(),any()) }
+        coVerify { licenseRepository.redownloadLicence(any(), any(), any(), any()) }
         coVerify { licenseRepository.deleteCachedLicense(Vendor.RankOne) }
         assertThat(licenseStatusSlot.captured).isEqualTo(LicenseStatus.ERROR)
     }
@@ -213,8 +229,9 @@ class FaceCaptureViewModelTest {
         } returns flowOf(
             LicenseState.Started,
             LicenseState.Downloading,
-            LicenseState.FinishedWithSuccess(License("2133-12-30T17:32:28Z", license, LicenseVersion("1.0"))
-            )
+            LicenseState.FinishedWithSuccess(
+                License("2133-12-30T17:32:28Z", license, LicenseVersion("1.0")),
+            ),
         )
         every { faceBioSdkInitializer.tryInitWithLicense(any(), license) } returns true
         val licenseStatusSlot = slot<LicenseStatus>()
@@ -236,14 +253,15 @@ class FaceCaptureViewModelTest {
         val license = "license"
         coEvery {
             licenseRepository.getCachedLicense(Vendor.RankOne)
-        } returns License("2133-12-30T17:32:28Z", license,LicenseVersion("1.0"))
+        } returns License("2133-12-30T17:32:28Z", license, LicenseVersion("1.0"))
         coEvery {
-            licenseRepository.redownloadLicence(any(), any(), any(),any())
+            licenseRepository.redownloadLicence(any(), any(), any(), any())
         } returns flowOf(
             LicenseState.Started,
             LicenseState.Downloading,
-            LicenseState.FinishedWithSuccess(License("2133-12-30T17:32:28Z", license, LicenseVersion("1.0"))
-            )
+            LicenseState.FinishedWithSuccess(
+                License("2133-12-30T17:32:28Z", license, LicenseVersion("1.0")),
+            ),
         )
         every { faceBioSdkInitializer.tryInitWithLicense(any(), license) } returnsMany listOf(false, true)
 
@@ -261,6 +279,30 @@ class FaceCaptureViewModelTest {
     }
 
     @Test
+    fun `auto-capture should be enabled if it is used according to its use case`() {
+        // Given
+        coEvery { isUsingAutoCapture() } returns true
+
+        // When
+        viewModel.setupAutoCapture()
+
+        // Then
+        assertThat(viewModel.isAutoCaptureEnabled.getOrAwaitValue()).isTrue()
+    }
+
+    @Test
+    fun `auto-capture should be disabled if it is not used according to its use case`() {
+        // Given
+        coEvery { isUsingAutoCapture() } returns false
+
+        // When
+        viewModel.setupAutoCapture()
+
+        // Then
+        assertThat(viewModel.isAutoCaptureEnabled.getOrAwaitValue()).isFalse()
+    }
+
+    @Test
     fun `test initFaceBioSdk should return error when re-download fails`() {
         // Given
         val license = "license"
@@ -272,7 +314,7 @@ class FaceCaptureViewModelTest {
         } returns flowOf(
             LicenseState.Started,
             LicenseState.Downloading,
-            LicenseState.FinishedWithError("error")
+            LicenseState.FinishedWithError("error"),
         )
 
         val licenseStatusSlot = slot<LicenseStatus>()

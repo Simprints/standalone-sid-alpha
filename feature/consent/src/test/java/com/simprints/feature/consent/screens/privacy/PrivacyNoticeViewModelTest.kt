@@ -19,11 +19,11 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-
 internal class PrivacyNoticeViewModelTest {
     companion object {
         private const val PROJECT_ID = "projectId"
-        private const val LANGUAGE = "en"
+        private const val DEVICE_LANGUAGE = "en"
+        private const val DEFAULT_LANGUAGE = "fr"
     }
 
     @get:Rule
@@ -41,14 +41,14 @@ internal class PrivacyNoticeViewModelTest {
     @MockK
     lateinit var authStore: AuthStore
 
-
     private lateinit var privacyNoticeViewModel: PrivacyNoticeViewModel
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this, relaxed = true)
 
-        coEvery { configManager.getDeviceConfiguration() } returns DeviceConfiguration(LANGUAGE, listOf(), "")
+        coEvery { configManager.getDeviceConfiguration() } returns DeviceConfiguration(DEVICE_LANGUAGE, listOf(), "")
+        coEvery { configManager.getProjectConfiguration().general.defaultLanguage } returns DEFAULT_LANGUAGE
         every { authStore.signedInProjectId } returns PROJECT_ID
 
         privacyNoticeViewModel = PrivacyNoticeViewModel(
@@ -60,11 +60,11 @@ internal class PrivacyNoticeViewModelTest {
 
     @Test
     fun `retrievePrivacyNotice should return DownloadInProgress when trying download`() = runTest {
-        coEvery { configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE) } returns flowOf(
-            PrivacyNoticeResult.InProgress(LANGUAGE),
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(DEVICE_LANGUAGE),
         )
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
         privacyNoticeViewModel.retrievePrivacyNotice()
 
         val value = privacyNoticeLiveData.getOrAwaitValue()
@@ -73,12 +73,12 @@ internal class PrivacyNoticeViewModelTest {
 
     @Test
     fun `retrievePrivacyNotice should return ContentAvailable when success received`() = runTest {
-        coEvery { configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE) } returns flowOf(
-            PrivacyNoticeResult.InProgress(LANGUAGE),
-            PrivacyNoticeResult.Succeed(LANGUAGE, "some long consent")
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(DEVICE_LANGUAGE),
+            PrivacyNoticeResult.Succeed(DEVICE_LANGUAGE, "some long consent"),
         )
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
         privacyNoticeViewModel.retrievePrivacyNotice()
 
         val value = privacyNoticeLiveData.getOrAwaitValue()
@@ -86,27 +86,31 @@ internal class PrivacyNoticeViewModelTest {
     }
 
     @Test
-    fun `retrievePrivacyNotice should return ConsentNotAvailable when Failed received`() = runTest {
-        coEvery { configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE) } returns flowOf(
-            PrivacyNoticeResult.InProgress(LANGUAGE),
-            PrivacyNoticeResult.Failed(LANGUAGE, Throwable())
+    fun `retrievePrivacyNotice should attempt default language when Failed received with initial`() = runTest {
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(DEVICE_LANGUAGE),
+            PrivacyNoticeResult.Failed(DEVICE_LANGUAGE, Throwable()),
+        )
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEFAULT_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(DEFAULT_LANGUAGE),
+            PrivacyNoticeResult.Succeed(DEFAULT_LANGUAGE, "some long consent"),
         )
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
         privacyNoticeViewModel.retrievePrivacyNotice()
 
         val value = privacyNoticeLiveData.getOrAwaitValue()
-        Truth.assertThat(value).isInstanceOf(PrivacyNoticeState.ConsentNotAvailable::class.java)
+        Truth.assertThat(value).isInstanceOf(PrivacyNoticeState.ConsentAvailable::class.java)
     }
 
     @Test
     fun `retrievePrivacyNotice should return BackendMaintenance when FailedBecauseBackendMaintenance received`() = runTest {
-        coEvery { configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE) } returns flowOf(
-            PrivacyNoticeResult.InProgress(LANGUAGE),
-            PrivacyNoticeResult.FailedBecauseBackendMaintenance(LANGUAGE, Throwable())
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(DEVICE_LANGUAGE),
+            PrivacyNoticeResult.FailedBecauseBackendMaintenance(DEVICE_LANGUAGE, Throwable()),
         )
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
         privacyNoticeViewModel.retrievePrivacyNotice()
 
         val value = privacyNoticeLiveData.getOrAwaitValue()
@@ -114,13 +118,32 @@ internal class PrivacyNoticeViewModelTest {
     }
 
     @Test
+    fun `retrievePrivacyNotice should return BackendMaintenance when FailedBecauseBackendMaintenance receivedon default language`() =
+        runTest {
+            coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+                PrivacyNoticeResult.InProgress(DEVICE_LANGUAGE),
+                PrivacyNoticeResult.Failed(DEVICE_LANGUAGE, Throwable()),
+            )
+            coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEFAULT_LANGUAGE) } returns flowOf(
+                PrivacyNoticeResult.InProgress(DEFAULT_LANGUAGE),
+                PrivacyNoticeResult.FailedBecauseBackendMaintenance(DEVICE_LANGUAGE, Throwable()),
+            )
+
+            val privacyNoticeLiveData = privacyNoticeViewModel.viewState
+            privacyNoticeViewModel.retrievePrivacyNotice()
+
+            val value = privacyNoticeLiveData.getOrAwaitValue()
+            Truth.assertThat(value).isInstanceOf(PrivacyNoticeState.BackendMaintenance::class.java)
+        }
+
+    @Test
     fun `retrievePrivacyNotice should return BackendMaintenance with estimation when FailedBecauseBackendMaintenance received`() = runTest {
-        coEvery { configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE) } returns flowOf(
-            PrivacyNoticeResult.InProgress(LANGUAGE),
-            PrivacyNoticeResult.FailedBecauseBackendMaintenance(LANGUAGE, Throwable(), 1000L)
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(DEVICE_LANGUAGE),
+            PrivacyNoticeResult.FailedBecauseBackendMaintenance(DEVICE_LANGUAGE, Throwable(), 1000L),
         )
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
         privacyNoticeViewModel.retrievePrivacyNotice()
 
         val value = privacyNoticeLiveData.getOrAwaitValue()
@@ -131,10 +154,14 @@ internal class PrivacyNoticeViewModelTest {
     @Test
     fun `downloadPressed should retrieve notice when online`() = runTest {
         every { connectivityTracker.isConnected() } returns true
-        coEvery { configManager.getPrivacyNotice(PROJECT_ID, LANGUAGE) } returns flowOf(PrivacyNoticeResult.InProgress(LANGUAGE))
+        coEvery { configManager.getPrivacyNotice(PROJECT_ID, DEVICE_LANGUAGE) } returns flowOf(
+            PrivacyNoticeResult.InProgress(
+                DEVICE_LANGUAGE,
+            ),
+        )
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
-        val showOfflineLiveData = privacyNoticeViewModel.showOffline()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
+        val showOfflineLiveData = privacyNoticeViewModel.showOffline
 
         privacyNoticeViewModel.downloadPressed()
 
@@ -146,8 +173,8 @@ internal class PrivacyNoticeViewModelTest {
     fun `downloadPressed should return offline event when offline`() = runTest {
         every { connectivityTracker.isConnected() } returns false
 
-        val privacyNoticeLiveData = privacyNoticeViewModel.viewState()
-        val showOfflineLiveData = privacyNoticeViewModel.showOffline()
+        val privacyNoticeLiveData = privacyNoticeViewModel.viewState
+        val showOfflineLiveData = privacyNoticeViewModel.showOffline
 
         privacyNoticeViewModel.downloadPressed()
 

@@ -18,7 +18,7 @@ dependencies {
     // Simprints
     implementation(project(":infra:orchestrator-data"))
     implementation(project(":infra:events"))
-    implementation(project(":infra:enrolment-records-store"))
+    implementation(project(":infra:enrolment-records:repository"))
     implementation(project(":fingerprint:infra:scanner"))
     implementation(project(":infra:config-store"))
     implementation(project(":infra:config-sync"))
@@ -34,7 +34,6 @@ dependencies {
 
     // Kotlin
     runtimeOnly(libs.kotlin.reflect)
-    implementation(libs.kotlin.coroutine.rx2.adapter)
 
     // Android X
     implementation(libs.androidX.ui.viewpager2)

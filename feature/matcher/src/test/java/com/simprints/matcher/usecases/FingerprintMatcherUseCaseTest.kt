@@ -8,24 +8,25 @@ import com.simprints.core.domain.fingerprint.IFingerIdentifier
 import com.simprints.fingerprint.infra.biosdk.BioSdkWrapper
 import com.simprints.fingerprint.infra.biosdk.ResolveBioSdkWrapperUseCase
 import com.simprints.infra.config.store.models.FingerprintConfiguration.BioSdk.SECUGEN_SIM_MATCHER
+import com.simprints.infra.config.store.models.Project
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
-import com.simprints.infra.enrolment.records.store.domain.models.BiometricDataSource
-import com.simprints.infra.enrolment.records.store.domain.models.FingerprintIdentity
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectQuery
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.domain.models.BiometricDataSource
+import com.simprints.infra.enrolment.records.repository.domain.models.FingerprintIdentity
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectQuery
 import com.simprints.matcher.MatchParams
 import com.simprints.testtools.common.coroutines.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 internal class FingerprintMatcherUseCaseTest {
-
     @get:Rule
     val rule = InstantTaskExecutorRule()
 
@@ -45,8 +46,11 @@ internal class FingerprintMatcherUseCaseTest {
     lateinit var configManager: ConfigManager
 
     @MockK
-    lateinit var createRangesUseCase: CreateRangesUseCase
+    lateinit var project: Project
 
+    @MockK
+    lateinit var createRangesUseCase: CreateRangesUseCase
+    private val onCandidateLoaded: () -> Unit = {}
     private lateinit var useCase: FingerprintMatcherUseCase
 
     @Before
@@ -68,32 +72,43 @@ internal class FingerprintMatcherUseCaseTest {
 
     @Test
     fun `Skips matching if there are no probes`() = runTest {
-        useCase.invoke(
+       val results = useCase.invoke(
             MatchParams(
+                probeReferenceId = "referenceId",
                 probeFingerprintSamples = emptyList(),
                 fingerprintSDK = SECUGEN_SIM_MATCHER,
                 flowType = FlowType.VERIFY,
                 queryForCandidates = SubjectQuery(),
                 biometricDataSource = BiometricDataSource.Simprints,
             ),
-        )
+           project
+        ).toList()
 
         coVerify(exactly = 0) { bioSdkWrapper.match(any(), any(), any()) }
+
+        assertThat(results).containsExactly(
+            MatcherUseCase.MatcherState.Success(
+                matchResultItems = emptyList(),
+                totalCandidates = 0,
+                matcherName = ""
+            )
+        )
     }
 
     @Test
     fun `Skips matching if there are no candidates`() = runTest {
         coEvery { enrolmentRecordRepository.count(any()) } returns 0
-        coEvery { enrolmentRecordRepository.loadFaceIdentities(any(), any()) } returns emptyList()
+        coEvery { enrolmentRecordRepository.loadFaceIdentities(any(), any(), any(), project, onCandidateLoaded) } returns emptyList()
         coEvery { bioSdkWrapper.match(any(), any(), any()) } returns listOf()
 
-        useCase.invoke(
+        val results = useCase.invoke(
             MatchParams(
+                probeReferenceId = "referenceId",
                 probeFingerprintSamples = listOf(
                     MatchParams.FingerprintSample(
                         IFingerIdentifier.LEFT_3RD_FINGER,
                         "format",
-                        byteArrayOf(1, 2, 3)
+                        byteArrayOf(1, 2, 3),
                     ),
                 ),
                 fingerprintSDK = SECUGEN_SIM_MATCHER,
@@ -101,9 +116,18 @@ internal class FingerprintMatcherUseCaseTest {
                 queryForCandidates = SubjectQuery(),
                 biometricDataSource = BiometricDataSource.Simprints,
             ),
-        )
+            project
+        ).toList()
 
         coVerify(exactly = 0) { bioSdkWrapper.match(any(), any(), any()) }
+
+        assertThat(results).containsExactly(
+            MatcherUseCase.MatcherState.Success(
+                matchResultItems = emptyList(),
+                totalCandidates = 0,
+                matcherName = ""
+            )
+        )
     }
 
     @Test
@@ -115,6 +139,8 @@ internal class FingerprintMatcherUseCaseTest {
                 any(),
                 any(),
                 any(),
+                project,
+                onCandidateLoaded
             )
         } returns listOf(
             FingerprintIdentity(
@@ -130,20 +156,19 @@ internal class FingerprintMatcherUseCaseTest {
                     fingerprintSample(IFingerIdentifier.LEFT_3RD_FINGER),
                     fingerprintSample(IFingerIdentifier.LEFT_4TH_FINGER),
                     fingerprintSample(IFingerIdentifier.LEFT_5TH_FINGER),
-                )
-            )
+                ),
+            ),
         )
         coEvery { bioSdkWrapper.match(any(), any(), any()) } returns listOf()
 
-        var onLoadingCalled = false
-
         useCase.invoke(
             matchParams = MatchParams(
+                probeReferenceId = "referenceId",
                 probeFingerprintSamples = listOf(
                     MatchParams.FingerprintSample(
                         IFingerIdentifier.LEFT_3RD_FINGER,
                         "format",
-                        byteArrayOf(1, 2, 3)
+                        byteArrayOf(1, 2, 3),
                     ),
                 ),
                 fingerprintSDK = SECUGEN_SIM_MATCHER,
@@ -151,14 +176,11 @@ internal class FingerprintMatcherUseCaseTest {
                 queryForCandidates = SubjectQuery(),
                 biometricDataSource = BiometricDataSource.Simprints,
             ),
-            onLoadingCandidates = { onLoadingCalled = true },
-        )
+            project
+        ).toList()
 
         coVerify { bioSdkWrapper.match(any(), any(), any()) }
-
-        assertThat(onLoadingCalled).isTrue()
     }
 
-    private fun fingerprintSample(finger: IFingerIdentifier) =
-        FingerprintSample(finger, byteArrayOf(1), 42, "format")
+    private fun fingerprintSample(finger: IFingerIdentifier) = FingerprintSample(finger, byteArrayOf(1), 42, "format", "referenceId")
 }

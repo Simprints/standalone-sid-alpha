@@ -12,8 +12,9 @@ dependencies {
     implementation(project(":infra:config-store"))
     implementation(project(":infra:config-sync"))
     implementation(project(":infra:events"))
-    implementation(project(":infra:enrolment-records-store"))
+    implementation(project(":infra:enrolment-records:repository"))
     implementation(project(":infra:orchestrator-data"))
+    implementation(project(":infra:logging-persistent"))
 
     implementation(libs.libsimprints)
     implementation(libs.jackson.core)

@@ -3,6 +3,7 @@ package com.simprints.infra.events.event.local.migrations
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.simprints.core.tools.extentions.getStringWithColumnName
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 
 /**
@@ -12,11 +13,11 @@ import com.simprints.infra.logging.Simber
  * in the JSON payload.
  */
 internal class EventMigration2to3 : Migration(2, 3) {
-
     private val sessionType = "SESSION_CAPTURE"
     private val idColumn = "id"
 
     override fun migrate(database: SupportSQLiteDatabase) {
+        Simber.i("Migrating room db from schema 2 to schema 3.", tag = MIGRATION)
         try {
             /**
              * Update the table to include a sessionIsClosed column and set it's default to false.
@@ -29,9 +30,9 @@ internal class EventMigration2to3 : Migration(2, 3) {
              * only be 1) will be closed the first time the user opens the app after the migration.
              */
             updateTableToCloseClosedSessions(database)
+            Simber.i("Migration from schema 2 to schema 3 done.", tag = MIGRATION)
         } catch (ex: Exception) {
-            Simber.e(ex)
-            throw ex
+            Simber.e("Failed to migrate room db from schema 2 to schema 3.", ex, tag = MIGRATION)
         }
     }
 
@@ -42,7 +43,7 @@ internal class EventMigration2to3 : Migration(2, 3) {
     private fun updateTableToCloseClosedSessions(database: SupportSQLiteDatabase) {
         val enrolmentEventsQuery = database.query(
             "SELECT * FROM DbEvent WHERE type = ? AND endedAt != 0",
-            arrayOf(sessionType)
+            arrayOf(sessionType),
         )
 
         enrolmentEventsQuery.use {
@@ -52,5 +53,4 @@ internal class EventMigration2to3 : Migration(2, 3) {
             }
         }
     }
-
 }

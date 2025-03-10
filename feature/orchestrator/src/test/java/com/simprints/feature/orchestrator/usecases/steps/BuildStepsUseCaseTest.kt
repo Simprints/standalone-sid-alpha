@@ -25,7 +25,6 @@ import org.junit.Before
 import org.junit.Test
 
 class BuildStepsUseCaseTest {
-
     @RelaxedMockK
     private lateinit var buildMatcherSubjectQuery: BuildMatcherSubjectQueryUseCase
 
@@ -56,7 +55,7 @@ class BuildStepsUseCaseTest {
         every { projectConfiguration.consent.collectConsent } returns true
         every { projectConfiguration.fingerprint?.allowedSDKs } returns listOf(
             SECUGEN_SIM_MATCHER,
-            NEC
+            NEC,
         )
 
         every { secugenSimMatcher.fingersToCapture } returns listOf(
@@ -82,7 +81,10 @@ class BuildStepsUseCaseTest {
         return projectConfiguration
     }
 
-    private fun assertStepOrder(steps: List<Step>, vararg expectedStepIds: Int) {
+    private fun assertStepOrder(
+        steps: List<Step>,
+        vararg expectedStepIds: Int,
+    ) {
         assertEquals("Number of steps does not match the expected number.", expectedStepIds.size, steps.size)
         steps.zip(expectedStepIds.toList()).forEachIndexed { index, pair ->
             val (step, expectedStepId) = pair
@@ -100,7 +102,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -119,7 +122,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FINGERPRINT_CAPTURE,
@@ -137,7 +141,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -145,7 +150,29 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
+        )
+    }
+
+    @Test
+    fun `build - enrol action - no age restriction - duplicate check - matching modalities - returns expected steps`() {
+        val projectConfiguration = mockCommonProjectConfiguration()
+        every { projectConfiguration.general.matchingModalities } returns listOf(Modality.FACE)
+        every { projectConfiguration.general.duplicateBiometricEnrolmentCheck } returns true
+
+        val action = mockk<ActionRequest.EnrolActionRequest>(relaxed = true)
+        every { action.getSubjectAgeIfAvailable() } returns null
+
+        val steps = useCase.build(action, projectConfiguration)
+
+        assertStepOrder(
+            steps,
+            StepId.SETUP,
+            StepId.CONSENT,
+            StepId.FINGERPRINT_CAPTURE,
+            StepId.FINGERPRINT_CAPTURE,
+            StepId.FACE_CAPTURE,
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -158,7 +185,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -166,7 +194,26 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
+        )
+    }
+
+    @Test
+    fun `build - identify action - no age restriction - matching modalities - returns expected steps`() {
+        val projectConfiguration = mockCommonProjectConfiguration()
+        every { projectConfiguration.general.matchingModalities } returns listOf(Modality.FACE)
+
+        val action = mockk<ActionRequest.IdentifyActionRequest>(relaxed = true)
+        every { action.getSubjectAgeIfAvailable() } returns null
+
+        val steps = useCase.build(action, projectConfiguration)
+
+        assertStepOrder(
+            steps,
+            StepId.SETUP,
+            StepId.CONSENT,
+            StepId.FACE_CAPTURE,
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -180,7 +227,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.VALIDATE_ID_POOL,
             StepId.CONSENT,
@@ -189,7 +237,7 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -202,7 +250,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.FETCH_GUID,
             StepId.CONSENT,
@@ -211,7 +260,27 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
+        )
+    }
+
+    @Test
+    fun `build - verify action - no age restriction - matching modalities - returns expected steps`() {
+        val projectConfiguration = mockCommonProjectConfiguration()
+        every { projectConfiguration.general.matchingModalities } returns listOf(Modality.FACE)
+
+        val action = mockk<ActionRequest.VerifyActionRequest>(relaxed = true)
+        every { action.getSubjectAgeIfAvailable() } returns null
+
+        val steps = useCase.build(action, projectConfiguration)
+
+        assertStepOrder(
+            steps,
+            StepId.SETUP,
+            StepId.FETCH_GUID,
+            StepId.CONSENT,
+            StepId.FACE_CAPTURE,
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -224,8 +293,9 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
-            StepId.CONFIRM_IDENTITY
+        assertStepOrder(
+            steps,
+            StepId.CONFIRM_IDENTITY,
         )
     }
 
@@ -242,8 +312,30 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
-            StepId.ENROL_LAST_BIOMETRIC
+        assertStepOrder(
+            steps,
+            StepId.ENROL_LAST_BIOMETRIC,
+        )
+    }
+
+    @Test
+    fun `build - enrol last biometric action - missing modality capture - returns expected steps`() {
+        val projectConfiguration = mockCommonProjectConfiguration()
+        every { projectConfiguration.general.matchingModalities } returns listOf(Modality.FACE)
+
+        val action = mockk<ActionRequest.EnrolLastBiometricActionRequest>(relaxed = true)
+        every { action.getSubjectAgeIfAvailable() } returns null
+        every { cache.steps } returns listOf(
+            Step(StepId.FACE_CAPTURE, mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true)),
+        )
+
+        val steps = useCase.build(action, projectConfiguration)
+
+        assertStepOrder(
+            steps,
+            StepId.FINGERPRINT_CAPTURE,
+            StepId.FINGERPRINT_CAPTURE,
+            StepId.ENROL_LAST_BIOMETRIC,
         )
     }
 
@@ -260,10 +352,11 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.SELECT_SUBJECT_AGE,
-            StepId.CONSENT
+            StepId.CONSENT,
         )
     }
 
@@ -280,10 +373,11 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.SELECT_SUBJECT_AGE,
-            StepId.CONSENT
+            StepId.CONSENT,
         )
     }
 
@@ -300,11 +394,12 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.SELECT_SUBJECT_AGE,
             StepId.FETCH_GUID,
-            StepId.CONSENT
+            StepId.CONSENT,
         )
     }
 
@@ -321,7 +416,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -344,7 +440,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -352,7 +449,7 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -369,7 +466,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -377,7 +475,7 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -395,7 +493,8 @@ class BuildStepsUseCaseTest {
         }
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.CONSENT,
             StepId.FINGERPRINT_CAPTURE,
@@ -403,7 +502,7 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -420,7 +519,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             StepId.FETCH_GUID,
             StepId.CONSENT,
@@ -429,7 +529,7 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -446,7 +546,8 @@ class BuildStepsUseCaseTest {
         every { action.biometricDataSource } returns "COMMCARE"
         val steps = useCase.build(action, projectConfiguration)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.SETUP,
             // no StepId.FETCH_GUID
             StepId.CONSENT,
@@ -455,7 +556,7 @@ class BuildStepsUseCaseTest {
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -519,7 +620,8 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.buildCaptureAndMatchStepsForAgeGroup(action, projectConfiguration, ageGroup)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FACE_CAPTURE,
@@ -539,13 +641,14 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.buildCaptureAndMatchStepsForAgeGroup(action, projectConfiguration, ageGroup)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -561,13 +664,14 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.buildCaptureAndMatchStepsForAgeGroup(action, projectConfiguration, ageGroup)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 
@@ -583,13 +687,14 @@ class BuildStepsUseCaseTest {
 
         val steps = useCase.buildCaptureAndMatchStepsForAgeGroup(action, projectConfiguration, ageGroup)
 
-        assertStepOrder(steps,
+        assertStepOrder(
+            steps,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FINGERPRINT_CAPTURE,
             StepId.FACE_CAPTURE,
             StepId.FINGERPRINT_MATCHER,
             StepId.FINGERPRINT_MATCHER,
-            StepId.FACE_MATCHER
+            StepId.FACE_MATCHER,
         )
     }
 

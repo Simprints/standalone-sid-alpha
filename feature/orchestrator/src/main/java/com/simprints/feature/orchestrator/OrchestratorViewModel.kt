@@ -24,10 +24,8 @@ import com.simprints.feature.orchestrator.steps.Step
 import com.simprints.feature.orchestrator.steps.StepId
 import com.simprints.feature.orchestrator.steps.StepStatus
 import com.simprints.feature.orchestrator.usecases.AddCallbackEventUseCase
-import com.simprints.feature.orchestrator.usecases.CreatePersonEventUseCase
 import com.simprints.feature.orchestrator.usecases.MapRefusalOrErrorResultUseCase
 import com.simprints.feature.orchestrator.usecases.MapStepsForLastBiometricEnrolUseCase
-import com.simprints.feature.orchestrator.usecases.ShouldCreatePersonUseCase
 import com.simprints.feature.orchestrator.usecases.UpdateDailyActivityUseCase
 import com.simprints.feature.orchestrator.usecases.response.AppResponseBuilderUseCase
 import com.simprints.feature.orchestrator.usecases.steps.BuildStepsUseCase
@@ -37,6 +35,7 @@ import com.simprints.fingerprint.capture.FingerprintCaptureParams
 import com.simprints.fingerprint.capture.FingerprintCaptureResult
 import com.simprints.infra.config.store.models.GeneralConfiguration
 import com.simprints.infra.config.sync.ConfigManager
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.orchestration.data.ActionRequest
 import com.simprints.infra.orchestration.data.responses.AppErrorResponse
@@ -54,14 +53,11 @@ internal class OrchestratorViewModel @Inject constructor(
     private val locationStore: LocationStore,
     private val stepsBuilder: BuildStepsUseCase,
     private val mapRefusalOrErrorResult: MapRefusalOrErrorResultUseCase,
-    private val shouldCreatePerson: ShouldCreatePersonUseCase,
-    private val createPersonEvent: CreatePersonEventUseCase,
     private val appResponseBuilder: AppResponseBuilderUseCase,
     private val addCallbackEvent: AddCallbackEventUseCase,
     private val updateDailyActivity: UpdateDailyActivityUseCase,
     private val mapStepsForLastBiometrics: MapStepsForLastBiometricEnrolUseCase,
 ) : ViewModel() {
-
     var isRequestProcessed = false
     private var modalities = emptySet<GeneralConfiguration.Modality>()
     private var steps = emptyList<Step>()
@@ -86,6 +82,7 @@ internal class OrchestratorViewModel @Inject constructor(
             // and add new ones to the list. This way all session steps are available throughout
             // the app for reference (i.e. have we already captured face in this session?)
             steps = cache.steps + stepsBuilder.build(action, projectConfiguration)
+            Simber.i("Steps to execute: ${steps.joinToString { it.id.toString() }}", tag = ORCHESTRATION)
         } catch (_: SubjectAgeNotSupportedException) {
             handleErrorResponse(AppErrorResponse(AppErrorReason.AGE_GROUP_NOT_SUPPORTED))
             return@launch
@@ -95,7 +92,8 @@ internal class OrchestratorViewModel @Inject constructor(
     }
 
     fun handleResult(result: Serializable) = viewModelScope.launch {
-        Simber.d(result.toString())
+        Simber.i("Handling step result: ${result.javaClass.simpleName}", tag = ORCHESTRATION)
+        Simber.d(result.toString(), tag = ORCHESTRATION)
 
         val projectConfiguration = configManager.getProjectConfiguration()
         val errorResponse = mapRefusalOrErrorResult(result, projectConfiguration)
@@ -108,19 +106,16 @@ internal class OrchestratorViewModel @Inject constructor(
         steps.firstOrNull { it.status == StepStatus.IN_PROGRESS }?.let { step ->
             step.status = StepStatus.COMPLETED
             step.result = result
+            Simber.i("Completed step: ${step.id}", tag = ORCHESTRATION)
 
             updateMatcherStepPayload(step, result)
-        }
-
-        if (shouldCreatePerson(actionRequest, modalities, steps)) {
-            createPersonEvent(steps.mapNotNull { it.result })
         }
 
         if (result is SelectSubjectAgeGroupResult) {
             val captureAndMatchSteps = stepsBuilder.buildCaptureAndMatchStepsForAgeGroup(
                 actionRequest!!,
                 projectConfiguration,
-                result.ageGroup
+                result.ageGroup,
             )
             steps = steps + captureAndMatchSteps
         }
@@ -137,6 +132,7 @@ internal class OrchestratorViewModel @Inject constructor(
         if (steps.isEmpty()) {
             // Restore the steps from cache
             steps = cache.steps
+            Simber.i("Restored steps: ${steps.joinToString { it.id.toString() }}", tag = ORCHESTRATION)
         }
     }
 
@@ -158,11 +154,13 @@ internal class OrchestratorViewModel @Inject constructor(
         if (steps.all { it.status != StepStatus.IN_PROGRESS }) {
             val nextStep = steps.firstOrNull { it.status == StepStatus.NOT_STARTED }
             if (nextStep != null) {
+                Simber.i("Next step: ${nextStep.id}", tag = ORCHESTRATION)
                 updateEnrolLastBiometricParamsIfNeeded(nextStep)
                 nextStep.status = StepStatus.IN_PROGRESS
                 cache.steps = steps
                 _currentStep.send(nextStep)
             } else {
+                Simber.i("All steps complete", tag = ORCHESTRATION)
                 // Acquiring location info could take long time, so we should stop location tracker
                 // before returning to the caller app to avoid creating empty sessions.
                 locationStore.cancelLocationCollection()
@@ -179,7 +177,7 @@ internal class OrchestratorViewModel @Inject constructor(
         if (step.id == StepId.ENROL_LAST_BIOMETRIC) {
             step.payload.getParcelable<EnrolLastBiometricParams>("params")?.let { params ->
                 val updatedParams = params.copy(
-                    steps = mapStepsForLastBiometrics(steps.mapNotNull { it.result })
+                    steps = mapStepsForLastBiometrics(steps.mapNotNull { it.result }),
                 )
                 step.payload = EnrolLastBiometricContract.getArgs(
                     projectId = updatedParams.projectId,
@@ -193,10 +191,12 @@ internal class OrchestratorViewModel @Inject constructor(
 
     private fun buildAppResponse() = viewModelScope.launch {
         val projectConfiguration = configManager.getProjectConfiguration()
+        val project = configManager.getProject(projectConfiguration.projectId)
         val appResponse = appResponseBuilder(
             projectConfiguration,
             actionRequest,
             steps.mapNotNull { it.result },
+            project
         )
 
         updateDailyActivity(appResponse)
@@ -204,16 +204,20 @@ internal class OrchestratorViewModel @Inject constructor(
         _appResponse.send(OrchestratorResult(actionRequest, appResponse))
     }
 
-    private fun updateMatcherStepPayload(currentStep: Step, result: Serializable) {
+    private fun updateMatcherStepPayload(
+        currentStep: Step,
+        result: Serializable,
+    ) {
         if (currentStep.id == StepId.FACE_CAPTURE && result is FaceCaptureResult) {
             val matchingStep = steps.firstOrNull { it.id == StepId.FACE_MATCHER }
 
             if (matchingStep != null) {
-                val faceSamples = result.results.mapNotNull { it.sample }
+                val faceSamples = result.results
+                    .mapNotNull { it.sample }
                     .map { MatchParams.FaceSample(it.faceId, it.template) }
                 val newPayload = matchingStep.payload
                     .getParcelable<MatchStepStubPayload>(MatchStepStubPayload.STUB_KEY)
-                    ?.toFaceStepArgs(faceSamples)
+                    ?.toFaceStepArgs(result.referenceId, faceSamples)
 
                 if (newPayload != null) {
                     matchingStep.payload = newPayload
@@ -226,25 +230,25 @@ internal class OrchestratorViewModel @Inject constructor(
             val matchingStep = steps.firstOrNull { step ->
                 if (step.id != StepId.FINGERPRINT_MATCHER) {
                     false
-                }
-                else {
+                } else {
                     val stepSdk = step.payload.getParcelable<MatchStepStubPayload>(MatchStepStubPayload.STUB_KEY)?.fingerprintSDK
                     stepSdk == captureParams?.fingerprintSDK
                 }
             }
 
             if (matchingStep != null) {
-                val fingerprintSamples = result.results.mapNotNull { it.sample }
+                val fingerprintSamples = result.results
+                    .mapNotNull { it.sample }
                     .map {
                         MatchParams.FingerprintSample(
                             fingerId = it.fingerIdentifier,
                             format = it.format,
-                            template = it.template
+                            template = it.template,
                         )
                     }
                 val newPayload = matchingStep.payload
                     .getParcelable<MatchStepStubPayload>(MatchStepStubPayload.STUB_KEY)
-                    ?.toFingerprintStepArgs(fingerprintSamples)
+                    ?.toFingerprintStepArgs(result.referenceId, fingerprintSamples)
 
                 if (newPayload != null) {
                     matchingStep.payload = newPayload
@@ -258,21 +262,20 @@ internal class OrchestratorViewModel @Inject constructor(
             actionRequest = JsonHelper.fromJson(
                 json = json,
                 module = dbSerializationModule,
-                type = object : TypeReference<ActionRequest>() {})
+                type = object : TypeReference<ActionRequest>() {},
+            )
         } catch (e: Exception) {
-            Simber.e(e)
+            Simber.e("Action request deserialization failed", e, tag = ORCHESTRATION)
         }
     }
 
-    fun getActionRequestJson(): String? {
-        return try {
-            actionRequest?.let {
-                JsonHelper.toJson(it, dbSerializationModule)
-            }
-        } catch (e: Exception) {
-            Simber.e(e)
-            null
+    fun getActionRequestJson(): String? = try {
+        actionRequest?.let {
+            JsonHelper.toJson(it, dbSerializationModule)
         }
+    } catch (e: Exception) {
+        Simber.e("Action request serialization failed", e, tag = ORCHESTRATION)
+        null
     }
 
     companion object {

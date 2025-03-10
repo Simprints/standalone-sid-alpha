@@ -9,9 +9,10 @@ import com.simprints.core.tools.time.TimeHelper
 import com.simprints.core.tools.utils.EncodingUtils
 import com.simprints.face.capture.FaceCaptureResult
 import com.simprints.fingerprint.capture.FingerprintCaptureResult
-import com.simprints.infra.enrolment.records.store.domain.models.Subject
+import com.simprints.infra.enrolment.records.repository.domain.models.Subject
 import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordCreationEvent
 import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordMoveEvent
+import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordUpdateEvent.EnrolmentRecordUpdatePayload
 import com.simprints.infra.events.event.domain.models.subject.FaceReference
 import com.simprints.infra.events.event.domain.models.subject.FaceTemplate
 import com.simprints.infra.events.event.domain.models.subject.FingerprintReference
@@ -28,15 +29,12 @@ import org.junit.Test
 import java.util.Date
 import java.util.UUID
 
-
 class SubjectFactoryTest {
-
     @MockK
     lateinit var encodingUtils: EncodingUtils
 
     @MockK
     lateinit var timeHelper: TimeHelper
-
 
     @Before
     fun setup() {
@@ -62,7 +60,7 @@ class SubjectFactoryTest {
             projectId = PROJECT_ID,
             attendantId = ATTENDANT_ID,
             moduleId = MODULE_ID,
-            biometricReferences = listOf(FINGERPRINT_REFERENCE, faceReference)
+            biometricReferences = listOf(FINGERPRINT_REFERENCE, faceReference),
         )
         val result = factory.buildSubjectFromCreationPayload(payload)
         val expected = Subject(
@@ -75,15 +73,17 @@ class SubjectFactoryTest {
                     fingerIdentifier = IDENTIFIER,
                     template = BASE_64_BYTES,
                     templateQualityScore = QUALITY,
-                    format = REFERENCE_FORMAT
-                )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
             ),
             faceSamples = listOf(
                 FaceSample(
                     template = BASE_64_BYTES,
-                    format = REFERENCE_FORMAT
-                )
-            )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
+            ),
         )
         assertThat(result).isEqualTo(expected)
     }
@@ -95,7 +95,7 @@ class SubjectFactoryTest {
             projectId = PROJECT_ID,
             attendantId = ATTENDANT_ID,
             moduleId = MODULE_ID,
-            biometricReferences = listOf(FINGERPRINT_REFERENCE, faceReference)
+            biometricReferences = listOf(FINGERPRINT_REFERENCE, faceReference),
         )
         val result = factory.buildSubjectFromMovePayload(payload)
 
@@ -109,15 +109,115 @@ class SubjectFactoryTest {
                     fingerIdentifier = IDENTIFIER,
                     template = BASE_64_BYTES,
                     templateQualityScore = QUALITY,
-                    format = REFERENCE_FORMAT
-                )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
             ),
             faceSamples = listOf(
                 FaceSample(
                     template = BASE_64_BYTES,
-                    format = REFERENCE_FORMAT
-                )
-            )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
+            ),
+        )
+        assertThat(result).isEqualTo(expected)
+    }
+
+    @Test
+    fun `when buildSubjectFromUpdatePayload is called, correct samples list is created`() {
+        val subject = Subject(
+            subjectId = SUBJECT_ID,
+            projectId = PROJECT_ID,
+            attendantId = ATTENDANT_ID,
+            moduleId = MODULE_ID,
+            fingerprintSamples = listOf(
+                FingerprintSample(
+                    fingerIdentifier = IDENTIFIER,
+                    template = BASE_64_BYTES,
+                    templateQualityScore = QUALITY,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-1",
+                ),
+                FingerprintSample(
+                    fingerIdentifier = IDENTIFIER,
+                    template = BASE_64_BYTES,
+                    templateQualityScore = QUALITY,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-2",
+                ),
+            ),
+            faceSamples = listOf(
+                FaceSample(
+                    template = BASE_64_BYTES,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-3",
+                ),
+                FaceSample(
+                    template = BASE_64_BYTES,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-4",
+                ),
+            ),
+        )
+
+        val payload = EnrolmentRecordUpdatePayload(
+            subjectId = SUBJECT_ID,
+            biometricReferencesRemoved = listOf("referenceId-finger-3", "referenceId-finger-2"),
+            biometricReferencesAdded = listOf(
+                FingerprintReference(
+                    id = "referenceId-finger-5",
+                    format = REFERENCE_FORMAT,
+                    templates = listOf(
+                        FingerprintTemplate(
+                            quality = QUALITY,
+                            template = BASE_64_BYTES.toString(),
+                            finger = IFingerIdentifier.LEFT_THUMB,
+                        ),
+                    ),
+                ),
+                FaceReference(
+                    id = "referenceId-finger-6",
+                    format = REFERENCE_FORMAT,
+                    templates = listOf(FaceTemplate(template = BASE_64_BYTES.toString())),
+                ),
+            ),
+        )
+        val result = factory.buildSubjectFromUpdatePayload(subject, payload)
+
+        val expected = Subject(
+            subjectId = SUBJECT_ID,
+            projectId = PROJECT_ID,
+            attendantId = ATTENDANT_ID,
+            moduleId = MODULE_ID,
+            fingerprintSamples = listOf(
+                FingerprintSample(
+                    fingerIdentifier = IDENTIFIER,
+                    template = BASE_64_BYTES,
+                    templateQualityScore = QUALITY,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-1",
+                ),
+                FingerprintSample(
+                    fingerIdentifier = IDENTIFIER,
+                    template = BASE_64_BYTES,
+                    templateQualityScore = QUALITY,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-5",
+                ),
+            ),
+            faceSamples = listOf(
+                FaceSample(
+                    template = BASE_64_BYTES,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-4",
+                ),
+                FaceSample(
+                    template = BASE_64_BYTES,
+                    format = REFERENCE_FORMAT,
+                    referenceId = "referenceId-finger-6",
+                ),
+            ),
         )
         assertThat(result).isEqualTo(expected)
     }
@@ -137,14 +237,16 @@ class SubjectFactoryTest {
                     fingerIdentifier = IDENTIFIER,
                     template = BASE_64_BYTES,
                     templateQualityScore = QUALITY,
-                    format = REFERENCE_FORMAT
-                )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
             ),
             faceSamples = listOf(
                 FaceSample(
                     template = BASE_64_BYTES,
-                    format = REFERENCE_FORMAT
-                )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
             ),
         )
 
@@ -152,31 +254,37 @@ class SubjectFactoryTest {
             projectId = expected.projectId,
             attendantId = expected.attendantId,
             moduleId = expected.moduleId,
-            fingerprintResponse = FingerprintCaptureResult(listOf(
-                FingerprintCaptureResult.Item(
-                    captureEventId = GUID1,
-                    identifier = IDENTIFIER,
-                    sample = FingerprintCaptureResult.Sample(
-                        template = BASE_64_BYTES,
-                        templateQualityScore = QUALITY,
-                        format = REFERENCE_FORMAT,
-                        imageRef = null,
-                        fingerIdentifier = IDENTIFIER,
-                    )
+            fingerprintResponse = FingerprintCaptureResult(
+                GUID1,
+                listOf(
+                    FingerprintCaptureResult.Item(
+                        captureEventId = GUID1,
+                        identifier = IDENTIFIER,
+                        sample = FingerprintCaptureResult.Sample(
+                            template = BASE_64_BYTES,
+                            templateQualityScore = QUALITY,
+                            format = REFERENCE_FORMAT,
+                            imageRef = null,
+                            fingerIdentifier = IDENTIFIER,
+                        ),
+                    ),
                 ),
-            )),
-            faceResponse = FaceCaptureResult(listOf(
-                FaceCaptureResult.Item(
-                    captureEventId = GUID1,
-                    index = 0,
-                    sample = FaceCaptureResult.Sample(
-                        template = BASE_64_BYTES,
-                        format = REFERENCE_FORMAT,
-                        faceId = REFERENCE_ID,
-                        imageRef = null,
-                    )
+            ),
+            faceResponse = FaceCaptureResult(
+                GUID1,
+                listOf(
+                    FaceCaptureResult.Item(
+                        captureEventId = GUID1,
+                        index = 0,
+                        sample = FaceCaptureResult.Sample(
+                            template = BASE_64_BYTES,
+                            format = REFERENCE_FORMAT,
+                            faceId = REFERENCE_ID,
+                            imageRef = null,
+                        ),
+                    ),
                 ),
-            )),
+            ),
         )
         assertThat(result).isEqualTo(expected)
     }
@@ -193,15 +301,17 @@ class SubjectFactoryTest {
                     fingerIdentifier = IDENTIFIER,
                     template = BASE_64_BYTES,
                     templateQualityScore = QUALITY,
-                    format = REFERENCE_FORMAT
-                )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
             ),
             faceSamples = listOf(
                 FaceSample(
                     template = BASE_64_BYTES,
-                    format = REFERENCE_FORMAT
-                )
-            )
+                    format = REFERENCE_FORMAT,
+                    referenceId = REFERENCE_ID,
+                ),
+            ),
         )
 
         val result = factory.buildSubject(
@@ -210,7 +320,7 @@ class SubjectFactoryTest {
             attendantId = expected.attendantId,
             moduleId = expected.moduleId,
             fingerprintSamples = expected.fingerprintSamples,
-            faceSamples = expected.faceSamples
+            faceSamples = expected.faceSamples,
         )
         assertThat(result).isEqualTo(expected)
     }
@@ -234,14 +344,14 @@ class SubjectFactoryTest {
                 FingerprintTemplate(
                     quality = QUALITY,
                     template = TEMPLATE_NAME,
-                    finger = IDENTIFIER
-                )
-            )
+                    finger = IDENTIFIER,
+                ),
+            ),
         )
         private val faceReference = FaceReference(
             id = REFERENCE_ID,
             templates = listOf(FaceTemplate(TEMPLATE_NAME)),
-            format = REFERENCE_FORMAT
+            format = REFERENCE_FORMAT,
         )
     }
 }

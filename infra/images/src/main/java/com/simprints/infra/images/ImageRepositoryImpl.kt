@@ -5,6 +5,7 @@ import com.simprints.infra.images.metadata.ImageMetadataStore
 import com.simprints.infra.images.model.Path
 import com.simprints.infra.images.model.SecuredImageRef
 import com.simprints.infra.images.remote.ImageRemoteDataSource
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.SYNC
 import com.simprints.infra.logging.Simber
 import javax.inject.Inject
 
@@ -13,21 +14,17 @@ internal class ImageRepositoryImpl @Inject internal constructor(
     private val remoteDataSource: ImageRemoteDataSource,
     private val metadataStore: ImageMetadataStore,
 ) : ImageRepository {
-
     override suspend fun storeImageSecurely(
         imageBytes: ByteArray,
         projectId: String,
         relativePath: Path,
         metadata: Map<String, String>,
-    ): SecuredImageRef? {
-        return localDataSource.encryptAndStoreImage(imageBytes, projectId, relativePath)
-            // Only store metadata if the image was stored successfully
-            ?.also { metadataStore.storeMetadata(relativePath, metadata) }
-    }
+    ): SecuredImageRef? = localDataSource
+        .encryptAndStoreImage(imageBytes, projectId, relativePath)
+        // Only store metadata if the image was stored successfully
+        ?.also { metadataStore.storeMetadata(relativePath, metadata) }
 
-    override suspend fun getNumberOfImagesToUpload(projectId: String): Int =
-        localDataSource.listImages(projectId).count()
-
+    override suspend fun getNumberOfImagesToUpload(projectId: String): Int = localDataSource.listImages(projectId).count()
 
     override suspend fun uploadStoredImagesAndDelete(projectId: String): Boolean {
         var allImagesUploaded = true
@@ -43,12 +40,12 @@ internal class ImageRepositoryImpl @Inject internal constructor(
                         metadataStore.deleteMetadata(imageRef.relativePath)
                     } else {
                         allImagesUploaded = false
-                        Simber.e("Failed to upload image without exception")
+                        Simber.i("Failed to upload image without exception", tag = SYNC)
                     }
                 }
             } catch (t: Throwable) {
                 allImagesUploaded = false
-                Simber.e(t)
+                Simber.e("Failed to upload images", t, tag = SYNC)
             }
         }
 

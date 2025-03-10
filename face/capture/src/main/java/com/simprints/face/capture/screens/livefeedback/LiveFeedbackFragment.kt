@@ -30,6 +30,8 @@ import com.simprints.face.capture.R
 import com.simprints.face.capture.databinding.FragmentLiveFeedbackBinding
 import com.simprints.face.capture.models.FaceDetection
 import com.simprints.face.capture.screens.FaceCaptureViewModel
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.FACE_CAPTURE
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.uibase.navigation.navigateSafely
 import com.simprints.infra.uibase.view.setCheckedWithLeftDrawable
@@ -40,7 +42,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import com.simprints.infra.resources.R as IDR
 
-
 /**
  * As the user is capturing subject's face, they are presented with this fragment, which displays
  * live information about distance and whether the face is ready to be captured or not.
@@ -49,7 +50,6 @@ import com.simprints.infra.resources.R as IDR
  */
 @AndroidEntryPoint
 internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) {
-
     /** Blocking camera operations are performed using this executor */
     private lateinit var cameraExecutor: ExecutorService
 
@@ -71,8 +71,12 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("LiveFeedbackFragment started", tag = ORCHESTRATION)
         initFragment()
     }
 
@@ -83,7 +87,7 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         binding.captureFeedbackBtn.setOnClickListener { vm.startCapture() }
         binding.captureProgress.max = mainVm.samplesToCapture
 
-        //Wait till the views gets its final size then init frame processor and setup the camera
+        // Wait till the views gets its final size then init frame processor and setup the camera
         binding.faceCaptureCamera.post {
             if (view != null) {
                 vm.initCapture(mainVm.samplesToCapture, mainVm.attemptNumber)
@@ -99,12 +103,13 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         // Initialize our background executor
         cameraExecutor = Executors.newSingleThreadExecutor()
         // ImageAnalysis
-        //Todo choose accurate output image resolution that respects quality,performance and face analysis SDKs https://simprints.atlassian.net/browse/CORE-2569
+        // Todo choose accurate output image resolution that respects quality,performance and face analysis SDKs https://simprints.atlassian.net/browse/CORE-2569
         if (!::targetResolution.isInitialized) {
             targetResolution = Size(binding.captureOverlay.width, binding.captureOverlay.height)
         }
 
-        val imageAnalyzer = ImageAnalysis.Builder()
+        val imageAnalyzer = ImageAnalysis
+            .Builder()
             .setTargetResolution(targetResolution)
             .setOutputImageRotationEnabled(true)
             .setOutputImageFormat(OUTPUT_IMAGE_FORMAT_RGBA_8888)
@@ -118,10 +123,14 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         val cameraProvider = ProcessCameraProvider.awaitInstance(requireContext())
         cameraProvider.unbindAll()
         cameraProvider.bindToLifecycle(
-            this@LiveFeedbackFragment, DEFAULT_BACK_CAMERA, preview, imageAnalyzer
+            this@LiveFeedbackFragment,
+            DEFAULT_BACK_CAMERA,
+            preview,
+            imageAnalyzer,
         )
         // Attach the view's surface provider to preview use case
         preview.surfaceProvider = binding.faceCaptureCamera.surfaceProvider
+        Simber.i("Camera setup finished", tag = FACE_CAPTURE)
     }
 
     override fun onResume() {
@@ -166,10 +175,9 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
                     mainVm.captureFinished(vm.sortedQualifyingCaptures)
                     findNavController().navigateSafely(
                         currentFragment = this,
-                        actionId = R.id.action_faceLiveFeedbackFragment_to_faceConfirmationFragment
+                        directions = LiveFeedbackFragmentDirections.actionFaceLiveFeedbackFragmentToFaceConfirmationFragment(),
                     )
                 }
-
             }
         }
     }
@@ -178,7 +186,7 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         try {
             vm.process(croppedBitmap = image)
         } catch (t: Throwable) {
-            Simber.e(t)
+            Simber.e("Image analysis crashed", t, tag = FACE_CAPTURE)
             // Image analysis is running in bg thread
             lifecycleScope.launch {
                 mainVm.submitError(t)
@@ -203,7 +211,7 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         with(binding) {
             captureOverlay.drawWhiteTarget()
             captureFeedbackTxtExplanation.setTextColor(
-                ContextCompat.getColor(requireContext(), IDR.color.simprints_blue_grey)
+                ContextCompat.getColor(requireContext(), IDR.color.simprints_blue_grey),
             )
         }
     }
@@ -237,7 +245,8 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
             captureFeedbackPermissionButton.isGone = true
 
             captureFeedbackBtn.setCheckedWithLeftDrawable(
-                true, ContextCompat.getDrawable(requireContext(), R.drawable.ic_checked_white_18dp)
+                true,
+                ContextCompat.getDrawable(requireContext(), R.drawable.ic_checked_white_18dp),
             )
         }
         toggleCaptureButtons(true)
@@ -251,7 +260,8 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
             captureFeedbackPermissionButton.isGone = true
 
             captureFeedbackBtn.setCheckedWithLeftDrawable(
-                true, ContextCompat.getDrawable(requireContext(), R.drawable.ic_checked_white_18dp)
+                true,
+                ContextCompat.getDrawable(requireContext(), R.drawable.ic_checked_white_18dp),
             )
         }
 
@@ -330,11 +340,15 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
 
     private fun renderProgressBar(valid: Boolean) {
         binding.apply {
-            val progressColor = if (valid) IDR.color.simprints_green_light
-            else IDR.color.simprints_blue_grey_light
+            val progressColor = if (valid) {
+                IDR.color.simprints_green_light
+            } else {
+                IDR.color.simprints_blue_grey_light
+            }
 
             captureProgress.progressColor = ContextCompat.getColor(
-                requireContext(), progressColor
+                requireContext(),
+                progressColor,
             )
 
             captureProgress.value = vm.userCaptures.size.toFloat()
@@ -356,8 +370,8 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
                     requireActivity().startActivity(
                         Intent(
                             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.parse("package:${requireActivity().packageName}")
-                        )
+                            Uri.parse("package:${requireActivity().packageName}"),
+                        ),
                     )
                 } else {
                     launchPermissionRequest.launch(Manifest.permission.CAMERA)
@@ -366,7 +380,4 @@ internal class LiveFeedbackFragment : Fragment(R.layout.fragment_live_feedback) 
         }
         toggleCaptureButtons(false)
     }
-
 }
-
-

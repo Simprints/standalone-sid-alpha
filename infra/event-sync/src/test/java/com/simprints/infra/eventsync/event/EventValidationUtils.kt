@@ -19,10 +19,14 @@ private val fingerIdentifiers = listOf(
     "RIGHT_INDEX_FINGER",
     "RIGHT_3RD_FINGER",
     "RIGHT_4TH_FINGER",
-    "RIGHT_5TH_FINGER"
+    "RIGHT_5TH_FINGER",
 )
 
-fun validateCommonParams(json: JSONObject, type: String, version: Int) {
+fun validateCommonParams(
+    json: JSONObject,
+    type: String,
+    version: Int,
+) {
     assertThat(json.getString("id")).isNotNull()
     assertThat(json.getString("type")).isEqualTo(type)
     assertThat(json.getInt("version")).isEqualTo(version)
@@ -69,7 +73,10 @@ fun verifyCallbackEnrolmentApiModel(json: JSONObject) {
     assertThat(json.length()).isEqualTo(2)
 }
 
-fun verifyCallbackIdentificationApiModel(json: JSONObject, version: Int) {
+fun verifyCallbackIdentificationApiModel(
+    json: JSONObject,
+    version: Int,
+) {
     assertThat(json.getString("type")).isEqualTo("Identification")
     assertThat(json.getString("sessionId")).isNotNull()
     json.getJSONArray("scores").let { jsonArray ->
@@ -77,8 +84,12 @@ fun verifyCallbackIdentificationApiModel(json: JSONObject, version: Int) {
         val score = jsonArray.getJSONObject(0)
 
         assertThat(score.getString("guid")).isNotNull()
-        assertThat(score.getString("tier")).isNotNull()
         assertThat(score.getString("confidence")).isNotNull()
+
+        when (version) {
+            1 -> assertThat(score.getString("tier")).isNotNull()
+            else -> {}
+        }
 
         when (version) {
             2 -> assertThat(score.has("confidenceMatch")).isFalse()
@@ -89,12 +100,19 @@ fun verifyCallbackIdentificationApiModel(json: JSONObject, version: Int) {
     assertThat(json.length()).isEqualTo(3)
 }
 
-fun verifyCallbackVerificationApiModel(json: JSONObject, version: Int) {
+fun verifyCallbackVerificationApiModel(
+    json: JSONObject,
+    version: Int,
+) {
     assertThat(json.getString("type")).isEqualTo("Verification")
     json.getJSONObject("score").let { score ->
         assertThat(score.getString("guid")).isNotNull()
         assertThat(score.getString("confidence")).isNotNull()
-        assertThat(score.getString("tier")).isNotNull()
+
+        when (version) {
+            1 -> assertThat(score.getString("tier")).isNotNull()
+            else -> {}
+        }
 
         when (version) {
             2 -> assertThat(score.has("confidenceMatch")).isFalse()
@@ -135,7 +153,7 @@ fun validateCalloutEventApiModel(json: JSONObject) {
                 ApiCalloutType.Identification -> verifyCalloutIdentificationApiModel(this)
                 ApiCalloutType.Verification -> verifyCalloutVerificationApiModel(this)
                 ApiCalloutType.EnrolmentLastBiometrics -> verifyCalloutLastEnrolmentBiometricsApiModel(
-                    this
+                    this,
                 )
             }
         }
@@ -209,7 +227,7 @@ fun validateAuthenticationEventApiModel(json: JSONObject) {
             assertThat(length()).isEqualTo(2)
         }
         assertThat(getString("result")).isIn(
-            ApiAuthenticationPayload.ApiResult.values().valuesAsStrings()
+            ApiAuthenticationPayload.ApiResult.values().valuesAsStrings(),
         )
         assertThat(length()).isEqualTo(4)
     }
@@ -273,7 +291,6 @@ fun validateConnectivitySnapshotEventApiModel(json: JSONObject) {
     }
 }
 
-
 fun validateConsentEventApiModel(json: JSONObject) {
     validateCommonParams(json, "Consent", 2)
 
@@ -283,16 +300,6 @@ fun validateConsentEventApiModel(json: JSONObject) {
         assertThat(getString("consentType")).isAnyOf("INDIVIDUAL", "PARENTAL")
         assertThat(getString("result")).isAnyOf("ACCEPTED", "DECLINED", "NO_RESPONSE")
         assertThat(length()).isEqualTo(4)
-    }
-}
-
-fun validateEnrolmentEventV1ApiModel(json: JSONObject) {
-    validateCommonParams(json, "Enrolment", 2)
-
-    with(json.getJSONObject("payload")) {
-        validateTimestamp(getJSONObject("startTime"))
-        assertThat(getString("personId").isValidGuid()).isTrue()
-        assertThat(length()).isEqualTo(2)
     }
 }
 
@@ -306,6 +313,20 @@ fun validateEnrolmentEventV2ApiModel(json: JSONObject) {
         assertThat(getString("moduleId")).isNotNull()
         assertThat(getString("attendantId")).isNotNull()
         assertThat(getString("personCreationEventId")).isNotNull()
+        assertThat(length()).isEqualTo(6)
+    }
+}
+
+fun validateEnrolmentEventV4ApiModel(json: JSONObject) {
+    validateCommonParams(json, "Enrolment", 4)
+
+    with(json.getJSONObject("payload")) {
+        validateTimestamp(getJSONObject("startTime"))
+        assertThat(getString("subjectId")).isNotNull()
+        assertThat(getString("projectId")).isNotNull()
+        assertThat(getString("moduleId")).isNotNull()
+        assertThat(getString("attendantId")).isNotNull()
+        assertThat(getJSONArray("biometricReferenceIds")).isNotNull()
         assertThat(length()).isEqualTo(6)
     }
 }
@@ -332,7 +353,7 @@ fun validateFingerprintCaptureEventApiModel(json: JSONObject) {
             "BAD_QUALITY",
             "NO_FINGER_DETECTED",
             "SKIPPED",
-            "FAILURE_TO_ACQUIRE"
+            "FAILURE_TO_ACQUIRE",
         )
 
         with(getJSONObject("fingerprint")) {
@@ -361,7 +382,7 @@ fun validateMatchEntryApiModel(json: JSONObject) {
 }
 
 fun validateOneToManyMatchEventApiModel(json: JSONObject) {
-    validateCommonParams(json, "OneToManyMatch", 2)
+    validateCommonParams(json, "OneToManyMatch", 3)
 
     with(json.getJSONObject("payload")) {
         validateTimestamp(getJSONObject("startTime"))
@@ -376,12 +397,13 @@ fun validateOneToManyMatchEventApiModel(json: JSONObject) {
         for (i in 0 until matchEntries.length()) {
             validateMatchEntryApiModel(matchEntries.getJSONObject(i))
         }
-        assertThat(length()).isEqualTo(5)
+        assertThat(getString("probeBiometricReferenceId").isValidGuid()).isTrue()
+        assertThat(length()).isEqualTo(6)
     }
 }
 
 fun validateOneToOneMatchEventApiModel(json: JSONObject) {
-    validateCommonParams(json, "OneToOneMatch", 3)
+    validateCommonParams(json, "OneToOneMatch", 4)
 
     with(json.getJSONObject("payload")) {
         validateTimestamp(getJSONObject("startTime"))
@@ -389,12 +411,15 @@ fun validateOneToOneMatchEventApiModel(json: JSONObject) {
         assertThat(getString("candidateId").isValidGuid()).isTrue()
         assertThat(getString("matcher")).isAnyOf("SIM_AFIS", "RANK_ONE")
         assertThat(getString("fingerComparisonStrategy")).isAnyOf(
-            "null", "SAME_FINGER", "CROSS_FINGER_USING_MEAN_OF_MAX"
+            "null",
+            "SAME_FINGER",
+            "CROSS_FINGER_USING_MEAN_OF_MAX",
         )
         with(getJSONObject("result")) {
             validateMatchEntryApiModel(this)
         }
-        assertThat(length()).isEqualTo(6)
+        assertThat(getString("probeBiometricReferenceId").isValidGuid()).isTrue()
+        assertThat(length()).isEqualTo(7)
     }
 }
 
@@ -443,7 +468,6 @@ fun validateScannerConnectionEventApiModel(json: JSONObject) {
         assertThat(length()).isEqualTo(2)
     }
 }
-
 
 fun validateVero2InfoSnapshotEventApiModel(json: JSONObject) {
     validateCommonParams(json, "Vero2InfoSnapshot", 3)
@@ -511,7 +535,6 @@ fun validateFaceOnboardingCompleteEventApiModel(json: JSONObject) {
     }
 }
 
-
 fun validateFaceFallbackCaptureEventApiModel(json: JSONObject) {
     validateCommonParams(json, "FaceFallbackCapture", 2)
     with(json.getJSONObject("payload")) {
@@ -536,8 +559,8 @@ fun validateFaceCaptureEventApiModel(json: JSONObject) {
                 "OFF_YAW",
                 "OFF_ROLL",
                 "TOO_CLOSE",
-                "TOO_FAR"
-            )
+                "TOO_FAR",
+            ),
         )
         assertThat(getBoolean("isFallback")).isNotNull()
         val face = getJSONObject("face")
@@ -613,4 +636,15 @@ fun validateAgeGroupSelectionEventApiModel(json: JSONObject) {
         assertThat(getString("subjectAgeGroup")).isNotNull()
     }
 }
+
+fun validateBiometricReferenceCreationEventApiModel(json: JSONObject) {
+    validateCommonParams(json, "BiometricReferenceCreation", 1)
+    with(json.getJSONObject("payload")) {
+        validateTimestamp(getJSONObject("startTime"))
+        assertThat(getString("id")).isNotNull()
+        assertThat(getString("modality")).isNotNull()
+        assertThat(getString("captureIds")).isNotNull()
+    }
+}
+
 private fun <T> Array<T>.valuesAsStrings(): List<String> = this.map { it.toString() }

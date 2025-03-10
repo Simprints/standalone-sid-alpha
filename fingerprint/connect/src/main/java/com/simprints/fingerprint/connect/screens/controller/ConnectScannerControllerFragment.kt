@@ -25,9 +25,6 @@ import com.simprints.feature.alert.AlertResult
 import com.simprints.feature.alert.toArgs
 import com.simprints.feature.exitform.ExitFormContract
 import com.simprints.feature.exitform.ExitFormResult
-import com.simprints.feature.exitform.exitFormConfiguration
-import com.simprints.feature.exitform.scannerOptions
-import com.simprints.feature.exitform.toArgs
 import com.simprints.fingerprint.connect.FingerprintConnectResult
 import com.simprints.fingerprint.connect.R
 import com.simprints.fingerprint.connect.screens.ConnectScannerViewModel
@@ -37,6 +34,8 @@ import com.simprints.fingerprint.connect.screens.alert.AlertError
 import com.simprints.fingerprint.connect.screens.issues.scanneroff.ScannerOffFragmentArgs
 import com.simprints.fingerprint.connect.screens.ota.OtaFragmentArgs
 import com.simprints.fingerprint.connect.screens.ota.OtaFragmentParams
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.FINGER_CAPTURE
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.uibase.navigation.finishWithResult
 import com.simprints.infra.uibase.navigation.handleResult
@@ -46,9 +45,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import com.simprints.infra.resources.R as IDR
 
 @AndroidEntryPoint
-internal class ConnectScannerControllerFragment :
-    Fragment(R.layout.fragment_connect_scanner_controller) {
-
+internal class ConnectScannerControllerFragment : Fragment(R.layout.fragment_connect_scanner_controller) {
     private var shouldRequestPermissions = true
 
     private val args: ConnectScannerControllerFragmentArgs by navArgs()
@@ -62,21 +59,20 @@ internal class ConnectScannerControllerFragment :
     @RequiresApi(Build.VERSION_CODES.S)
     private val bluetoothPermissions = arrayOf(
         Manifest.permission.BLUETOOTH_SCAN,
-        Manifest.permission.BLUETOOTH_CONNECT
+        Manifest.permission.BLUETOOTH_CONNECT,
     )
 
     @RequiresApi(Build.VERSION_CODES.S)
     private val bluetoothPermissionsCall = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions: Map<String, Boolean> ->
         val permission = permissions
             .filterKeys(bluetoothPermissions::contains)
             .map { (permission, isGranted) ->
                 requireActivity().permissionFromResult(permission, isGranted)
-            }
-            .worstPermissionStatus()
+            }.worstPermissionStatus()
 
-        Simber.i("Bluetooth permission: $permission")
+        Simber.i("Bluetooth permission: $permission", tag = FINGER_CAPTURE)
 
         when (permission) {
             PermissionStatus.Granted -> activityViewModel.connect()
@@ -94,8 +90,13 @@ internal class ConnectScannerControllerFragment :
     private val currentlyDisplayedInternalFragment: Fragment?
         get() = hostFragment?.childFragmentManager?.fragments?.first()
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("ConnectScannerControllerFragment started", tag = ORCHESTRATION)
+
         shouldRequestPermissions = savedInstanceState?.getBoolean(KEY_SHOULD_REQUEST_PERMISSIONS)
             ?: shouldRequestPermissions
 
@@ -108,13 +109,13 @@ internal class ConnectScannerControllerFragment :
             lifecycleOwner = this,
             currentDestinationId = R.id.connectScannerControllerFragment,
             targetDestinationId = ExitFormContract.DESTINATION,
-            handler = ::handleExitForm
+            handler = ::handleExitForm,
         )
         findNavController().handleResult(
             lifecycleOwner = this,
             currentDestinationId = R.id.connectScannerControllerFragment,
             targetDestinationId = AlertContract.DESTINATION,
-            handler = ::handleResult
+            handler = ::handleResult,
         )
 
         activityViewModel.showScannerIssueScreen.observe(
@@ -130,28 +131,28 @@ internal class ConnectScannerControllerFragment :
 
                     ConnectScannerIssueScreen.BluetoothOff -> internalNavController?.navigateSafely(
                         currentlyDisplayedInternalFragment,
-                        R.id.issueBluetoothOffFragment
+                        R.id.issueBluetoothOffFragment,
                     )
 
                     ConnectScannerIssueScreen.NfcOff -> internalNavController?.navigateSafely(
                         currentlyDisplayedInternalFragment,
-                        R.id.issueNfcOffFragment
+                        R.id.issueNfcOffFragment,
                     )
 
                     ConnectScannerIssueScreen.NfcPair -> internalNavController?.navigateSafely(
                         currentlyDisplayedInternalFragment,
-                        R.id.issueNfcPairFragment
+                        R.id.issueNfcPairFragment,
                     )
 
                     ConnectScannerIssueScreen.SerialEntryPair -> internalNavController?.navigateSafely(
                         currentlyDisplayedInternalFragment,
-                        R.id.issueSerialEntryPairFragment
+                        R.id.issueSerialEntryPairFragment,
                     )
 
                     is ConnectScannerIssueScreen.ScannerOff -> internalNavController?.navigateSafely(
                         currentlyDisplayedInternalFragment,
                         R.id.issueScannerOffFragment,
-                        ScannerOffFragmentArgs(screen.currentScannerId).toBundle()
+                        ScannerOffFragmentArgs(screen.currentScannerId).toBundle(),
                     )
 
                     is ConnectScannerIssueScreen.ScannerError -> screen.currentScannerId?.let {
@@ -161,13 +162,16 @@ internal class ConnectScannerControllerFragment :
                     is ConnectScannerIssueScreen.Ota -> internalNavController?.navigateSafely(
                         currentlyDisplayedInternalFragment,
                         R.id.otaFragment,
-                        OtaFragmentArgs(OtaFragmentParams(
-                            args.params.fingerprintSDK,
-                            screen.availableOtas
-                        )).toBundle()
+                        OtaFragmentArgs(
+                            OtaFragmentParams(
+                                args.params.fingerprintSDK,
+                                screen.availableOtas,
+                            ),
+                        ).toBundle(),
                     )
                 }
-            })
+            },
+        )
         activityViewModel.scannerConnected.observe(
             viewLifecycleOwner,
             LiveDataEventWithContentObserver { isSuccess ->
@@ -175,13 +179,15 @@ internal class ConnectScannerControllerFragment :
                     Vibrate.vibrate(requireContext())
                     activityViewModel.finishConnectionFlow(true)
                 }
-            })
+            },
+        )
 
         activityViewModel.finish.observe(
             viewLifecycleOwner,
             LiveDataEventWithContentObserver { isSuccess ->
                 finishWithResult(isSuccess)
-            })
+            },
+        )
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             activityViewModel.handleBackPress()
@@ -202,19 +208,17 @@ internal class ConnectScannerControllerFragment :
             knownScannedDialog = MaterialAlertDialogBuilder(requireContext())
                 .setPositiveButton(IDR.string.fingerprint_connect_scanner_confirmation_yes) { _, _ ->
                     activityViewModel.handleScannerDisconnectedYesClick()
-                }
-                .setNegativeButton(IDR.string.fingerprint_connect_scanner_confirmation_no) { _, _ ->
+                }.setNegativeButton(IDR.string.fingerprint_connect_scanner_confirmation_no) { _, _ ->
                     activityViewModel.handleScannerDisconnectedNoClick()
-                }
-                .setCancelable(false)
+                }.setCancelable(false)
                 .create()
         }
-        //Update scannerId in case it has changed
+        // Update scannerId in case it has changed
         knownScannedDialog?.setTitle(
             getString(
                 IDR.string.fingerprint_connect_scanner_id_confirmation_message,
-                scannerId
-            )
+                scannerId,
+            ),
         )
         if (internalNavController?.currentDestination?.id == R.id.connectProgressFragment) {
             knownScannedDialog?.takeUnless { it.isShowing }?.show()
@@ -243,13 +247,17 @@ internal class ConnectScannerControllerFragment :
     }
 
     private fun checkBluetoothPermissions() {
-        if (hasBluetoothPermissions()) activityViewModel.connect()
-        else requestBluetoothPermissions()
+        if (hasBluetoothPermissions()) {
+            activityViewModel.connect()
+        } else {
+            requestBluetoothPermissions()
+        }
     }
 
-    private fun hasBluetoothPermissions(): Boolean {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) true
-        else requireActivity().hasPermissions(bluetoothPermissions)
+    private fun hasBluetoothPermissions(): Boolean = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        true
+    } else {
+        requireActivity().hasPermissions(bluetoothPermissions)
     }
 
     private fun requestBluetoothPermissions() {
@@ -262,7 +270,7 @@ internal class ConnectScannerControllerFragment :
         findNavController().navigateSafely(
             this,
             R.id.action_global_to_alertFragment,
-            error.toAlertConfig().toArgs()
+            error.toAlertConfig().toArgs(),
         )
     }
 
@@ -280,11 +288,6 @@ internal class ConnectScannerControllerFragment :
         findNavController().navigateSafely(
             this,
             R.id.action_global_to_exitFormFragment,
-            exitFormConfiguration {
-                titleRes = IDR.string.exit_form_title_fingerprinting
-                backButtonRes = IDR.string.exit_form_continue_fingerprints_button
-                visibleOptions = scannerOptions()
-            }.toArgs()
         )
     }
 
@@ -304,5 +307,4 @@ internal class ConnectScannerControllerFragment :
     companion object {
         private const val KEY_SHOULD_REQUEST_PERMISSIONS = "KEY_SHOULD_REQUEST_PERMISSIONS"
     }
-
 }

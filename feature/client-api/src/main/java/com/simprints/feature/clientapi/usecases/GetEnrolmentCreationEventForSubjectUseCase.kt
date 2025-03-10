@@ -1,13 +1,17 @@
 package com.simprints.feature.clientapi.usecases
 
+import com.fasterxml.jackson.databind.module.SimpleModule
+import com.simprints.core.domain.tokenization.TokenizableString
+import com.simprints.core.domain.tokenization.serialization.TokenizationClassNameDeserializer
+import com.simprints.core.domain.tokenization.serialization.TokenizationClassNameSerializer
 import com.simprints.core.tools.json.JsonHelper
 import com.simprints.core.tools.utils.EncodingUtils
 import com.simprints.infra.config.store.models.canCoSyncAllData
 import com.simprints.infra.config.store.models.canCoSyncBiometricData
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
-import com.simprints.infra.enrolment.records.store.domain.models.Subject
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectQuery
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.domain.models.Subject
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectQuery
 import com.simprints.infra.events.event.cosync.CoSyncEnrolmentRecordEvents
 import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordCreationEvent
 import javax.inject.Inject
@@ -18,7 +22,10 @@ internal class GetEnrolmentCreationEventForSubjectUseCase @Inject constructor(
     private val encoder: EncodingUtils,
     private val jsonHelper: JsonHelper,
 ) {
-    suspend operator fun invoke(projectId: String, subjectId: String): String? {
+    suspend operator fun invoke(
+        projectId: String,
+        subjectId: String,
+    ): String? {
         val config = configManager.getProjectConfiguration()
 
         if (!config.canCoSyncAllData() && !config.canCoSyncBiometricData()) {
@@ -31,7 +38,7 @@ internal class GetEnrolmentCreationEventForSubjectUseCase @Inject constructor(
             ?.fromSubjectToEnrolmentCreationEvent()
             ?: return null
 
-        return jsonHelper.toJson(CoSyncEnrolmentRecordEvents(listOf(recordCreationEvent)))
+        return jsonHelper.toJson(CoSyncEnrolmentRecordEvents(listOf(recordCreationEvent)), coSyncSerializationModule)
     }
 
     private fun Subject.fromSubjectToEnrolmentCreationEvent() = EnrolmentRecordCreationEvent(
@@ -39,6 +46,13 @@ internal class GetEnrolmentCreationEventForSubjectUseCase @Inject constructor(
         projectId,
         moduleId,
         attendantId,
-        EnrolmentRecordCreationEvent.buildBiometricReferences(fingerprintSamples, faceSamples, encoder)
+        EnrolmentRecordCreationEvent.buildBiometricReferences(fingerprintSamples, faceSamples, encoder),
     )
+
+    companion object {
+        val coSyncSerializationModule = SimpleModule().apply {
+            addSerializer(TokenizableString::class.java, TokenizationClassNameSerializer())
+            addDeserializer(TokenizableString::class.java, TokenizationClassNameDeserializer())
+        }
+    }
 }

@@ -1,6 +1,5 @@
 package com.simprints.fingerprint.infra.scannermock.simulated.tools
 
-import io.reactivex.Observer
 import java.io.OutputStream
 
 /**
@@ -8,8 +7,7 @@ import java.io.OutputStream
  * There is no byte buffer limit so onNext is called on [observers] only when flush() is called.
  */
 class OutputStreamInterceptor : OutputStream() {
-
-    val observers = mutableSetOf<Observer<ByteArray>>()
+    val observers = mutableSetOf<(message: ByteArray) -> Unit>()
 
     private var buffer = mutableListOf<ByteArray>()
 
@@ -21,17 +19,17 @@ class OutputStreamInterceptor : OutputStream() {
         if (b != null) buffer.add(b)
     }
 
-    override fun write(b: ByteArray?, off: Int, len: Int) {
+    override fun write(
+        b: ByteArray?,
+        off: Int,
+        len: Int,
+    ) {
         if (b != null) buffer.add(b)
     }
 
     override fun flush() {
         val bytes = buffer.reduce { acc, bytes -> acc + bytes }
-        observers.forEach { it.onNext(bytes) }
+        observers.forEach { it(bytes) }
         buffer.clear()
-    }
-
-    override fun close() {
-        observers.forEach { it.onComplete() }
     }
 }

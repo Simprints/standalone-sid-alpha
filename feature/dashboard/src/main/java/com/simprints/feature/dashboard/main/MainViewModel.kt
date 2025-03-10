@@ -17,9 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 internal class MainViewModel @Inject constructor(
     private val configManager: ConfigManager,
-    private val securityManager: SecurityManager
+    private val securityManager: SecurityManager,
 ) : ViewModel() {
-
     val consentRequired: LiveData<Boolean>
         get() = _consentRequired
     private val _consentRequired = MutableLiveData<Boolean>()
@@ -40,7 +39,7 @@ internal class MainViewModel @Inject constructor(
     private fun checkIfDeviceIsSafe() = try {
         securityManager.checkIfDeviceIsRooted()
     } catch (ex: RootedDeviceException) {
-        Simber.e(ex)
+        Simber.e("Rooted device detected", ex)
         _rootedDeviceDetected.send()
     }
 }

@@ -3,15 +3,18 @@ package com.simprints.feature.exitform.screen
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.simprints.core.ExternalScope
+import androidx.lifecycle.viewModelScope
+import com.simprints.core.SessionCoroutineScope
 import com.simprints.core.livedata.LiveDataEvent
 import com.simprints.core.livedata.LiveDataEventWithContent
 import com.simprints.core.livedata.send
 import com.simprints.core.tools.time.TimeHelper
 import com.simprints.core.tools.time.Timestamp
-import com.simprints.feature.exitform.config.ExitFormOption
-import com.simprints.infra.events.SessionEventRepository
+import com.simprints.feature.exitform.ExitFormOption
+import com.simprints.infra.config.store.models.GeneralConfiguration
+import com.simprints.infra.config.sync.ConfigManager
 import com.simprints.infra.events.event.domain.models.RefusalEvent
+import com.simprints.infra.events.session.SessionEventRepository
 import com.simprints.infra.logging.Simber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -20,12 +23,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 internal class ExitFormViewModel @Inject constructor(
+    private val configManager: ConfigManager,
     private val timeHelper: TimeHelper,
     private val eventRepository: SessionEventRepository,
-    @ExternalScope private val externalScope: CoroutineScope
+    @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : ViewModel() {
-
     private val exitFormStart: Timestamp = timeHelper.now()
+
+    private val _visibleOptions: MutableLiveData<Set<ExitFormOption>> = MutableLiveData(DEFAULT_OPTIONS)
+    val visibleOptions: LiveData<Set<ExitFormOption>>
+        get() = _visibleOptions
 
     private var selectedOption: ExitFormOption? = null
     private var providedReason: String? = null
@@ -65,8 +72,22 @@ internal class ExitFormViewModel @Inject constructor(
         _submitEnabled.postValue(canSubmit(selectedOption, newReason))
     }
 
-    private fun canSubmit(option: ExitFormOption?, reason: String?) =
-        option != null && !(option.requiresInfo && reason.isNullOrBlank())
+    fun start() {
+        viewModelScope.launch {
+            val projectConfig = configManager.getProjectConfiguration()
+            if (projectConfig.general.modalities.contains(GeneralConfiguration.Modality.FINGERPRINT)) {
+                val options = DEFAULT_OPTIONS.toMutableSet()
+                options.remove(ExitFormOption.AppNotWorking)
+                options.add(ExitFormOption.ScannerNotWorking)
+                _visibleOptions.postValue(options)
+            }
+        }
+    }
+
+    private fun canSubmit(
+        option: ExitFormOption?,
+        reason: String?,
+    ) = option != null && !(option.requiresInfo && reason.isNullOrBlank())
 
     fun handleBackButton() {
         if (selectedOption == null) {
@@ -85,7 +106,24 @@ internal class ExitFormViewModel @Inject constructor(
         }
     }
 
-    private fun logRefusalEvent(option: ExitFormOption, reasonText: String) = externalScope.launch {
+    private fun logRefusalEvent(
+        option: ExitFormOption,
+        reasonText: String,
+    ) = sessionCoroutineScope.launch {
         eventRepository.addOrUpdateEvent(RefusalEvent(exitFormStart, timeHelper.now(), option.answer, reasonText))
+    }
+
+    companion object {
+        val DEFAULT_OPTIONS = setOf(
+            ExitFormOption.ReligiousConcerns,
+            ExitFormOption.DataConcerns,
+            ExitFormOption.NoPermission,
+            ExitFormOption.AppNotWorking,
+            ExitFormOption.PersonNotPresent,
+            ExitFormOption.TooYoung,
+            ExitFormOption.WrongAgeGroupSelected,
+            ExitFormOption.UncooperativeChild,
+            ExitFormOption.Other,
+        )
     }
 }

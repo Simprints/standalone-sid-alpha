@@ -16,6 +16,7 @@ import com.simprints.infra.config.store.testtools.deviceConfiguration
 import com.simprints.infra.config.store.testtools.deviceState
 import com.simprints.infra.config.store.testtools.project
 import com.simprints.infra.config.store.testtools.projectConfiguration
+import com.simprints.infra.config.store.tokenization.TokenizationProcessor
 import com.simprints.infra.network.SimNetwork
 import com.simprints.infra.network.exceptions.BackendMaintenanceException
 import com.simprints.testtools.common.syntax.assertThrows
@@ -30,7 +31,6 @@ import org.junit.Before
 import org.junit.Test
 
 class ConfigRepositoryImplTest {
-
     companion object {
         private const val PROJECT_ID = "projectId"
         private const val DEVICE_ID = "deviceId"
@@ -41,6 +41,7 @@ class ConfigRepositoryImplTest {
     private val localDataSource = mockk<ConfigLocalDataSource>(relaxed = true)
     private val remoteDataSource = mockk<ConfigRemoteDataSource>()
     private val simNetwork = mockk<SimNetwork>(relaxed = true)
+    private val tokenizationProcessor = mockk<TokenizationProcessor>(relaxed = true)
 
     private lateinit var configServiceImpl: ConfigRepositoryImpl
 
@@ -50,7 +51,8 @@ class ConfigRepositoryImplTest {
             localDataSource,
             remoteDataSource,
             simNetwork,
-            DEVICE_ID
+            tokenizationProcessor,
+            DEVICE_ID,
         )
     }
 
@@ -79,39 +81,37 @@ class ConfigRepositoryImplTest {
     }
 
     @Test
-    fun `refreshProject() should get the project remotely and save it and update the api base url if not empty`() =
-        runTest {
-            coEvery { localDataSource.saveProject(project) } returns Unit
-            coEvery { remoteDataSource.getProject(PROJECT_ID) } returns ProjectWithConfig(project, projectConfiguration)
+    fun `refreshProject() should get the project remotely and save it and update the api base url if not empty`() = runTest {
+        coEvery { localDataSource.saveProject(project) } returns Unit
+        coEvery { remoteDataSource.getProject(PROJECT_ID) } returns ProjectWithConfig(project, projectConfiguration)
 
-            configServiceImpl.refreshProject(PROJECT_ID)
-            coVerify(exactly = 1) { localDataSource.saveProject(project) }
-            coVerify(exactly = 1) { localDataSource.saveProjectConfiguration(projectConfiguration) }
-            coVerify(exactly = 1) { remoteDataSource.getProject(PROJECT_ID) }
-            coVerify(exactly = 1) { simNetwork.setApiBaseUrl(project.baseUrl) }
-        }
+        configServiceImpl.refreshProject(PROJECT_ID)
+        coVerify(exactly = 1) { localDataSource.saveProject(project) }
+        coVerify(exactly = 1) { localDataSource.saveProjectConfiguration(projectConfiguration) }
+        coVerify(exactly = 1) { remoteDataSource.getProject(PROJECT_ID) }
+        coVerify(exactly = 1) { simNetwork.setApiBaseUrl(project.baseUrl) }
+    }
 
     @Test
-    fun `refreshProject() should get the project remotely and save it and not update the api base url if empty`() =
-        runTest {
-            val project = Project(
-                "id",
-                "name",
-                ProjectState.RUNNING,
-                "description",
-                "creator",
-                "url",
-                "",
-                tokenizationKeys = emptyMap()
-            )
-            coEvery { localDataSource.saveProject(project) } returns Unit
-            coEvery { remoteDataSource.getProject(PROJECT_ID) } returns ProjectWithConfig(project, projectConfiguration)
+    fun `refreshProject() should get the project remotely and save it and not update the api base url if empty`() = runTest {
+        val project = Project(
+            "id",
+            "name",
+            ProjectState.RUNNING,
+            "description",
+            "creator",
+            "url",
+            "",
+            tokenizationKeys = emptyMap(),
+        )
+        coEvery { localDataSource.saveProject(project) } returns Unit
+        coEvery { remoteDataSource.getProject(PROJECT_ID) } returns ProjectWithConfig(project, projectConfiguration)
 
-            configServiceImpl.refreshProject(PROJECT_ID)
-            coVerify(exactly = 1) { localDataSource.saveProject(project) }
-            coVerify(exactly = 1) { remoteDataSource.getProject(PROJECT_ID) }
-            coVerify(exactly = 0) { simNetwork.setApiBaseUrl(project.baseUrl) }
-        }
+        configServiceImpl.refreshProject(PROJECT_ID)
+        coVerify(exactly = 1) { localDataSource.saveProject(project) }
+        coVerify(exactly = 1) { remoteDataSource.getProject(PROJECT_ID) }
+        coVerify(exactly = 0) { simNetwork.setApiBaseUrl(project.baseUrl) }
+    }
 
     @Test
     fun `getDeviceState should call the correct method`() = runTest {
@@ -156,7 +156,7 @@ class ConfigRepositoryImplTest {
         coEvery {
             remoteDataSource.getPrivacyNotice(
                 PROJECT_ID,
-                "${PRIVACY_NOTICE_FILE}_$LANGUAGE"
+                "${PRIVACY_NOTICE_FILE}_$LANGUAGE",
             )
         } returns PRIVACY_NOTICE
 
@@ -165,14 +165,14 @@ class ConfigRepositoryImplTest {
         assertThat(results).isEqualTo(
             listOf(
                 InProgress(LANGUAGE),
-                Succeed(LANGUAGE, PRIVACY_NOTICE)
-            )
+                Succeed(LANGUAGE, PRIVACY_NOTICE),
+            ),
         )
         verify(exactly = 1) {
             localDataSource.storePrivacyNotice(
                 PROJECT_ID,
                 LANGUAGE,
-                PRIVACY_NOTICE
+                PRIVACY_NOTICE,
             )
         }
     }
@@ -185,7 +185,7 @@ class ConfigRepositoryImplTest {
             coEvery {
                 remoteDataSource.getPrivacyNotice(
                     PROJECT_ID,
-                    "${PRIVACY_NOTICE_FILE}_$LANGUAGE"
+                    "${PRIVACY_NOTICE_FILE}_$LANGUAGE",
                 )
             } throws exception
 
@@ -194,34 +194,33 @@ class ConfigRepositoryImplTest {
             assertThat(results).isEqualTo(
                 listOf(
                     InProgress(LANGUAGE),
-                    FailedBecauseBackendMaintenance(LANGUAGE, exception, 10)
-                )
+                    FailedBecauseBackendMaintenance(LANGUAGE, exception, 10),
+                ),
             )
             verify(exactly = 0) { localDataSource.storePrivacyNotice(PROJECT_ID, LANGUAGE, any()) }
         }
 
     @Test
-    fun `should return a Failed if it fails to download the privacy notice with another exception`() =
-        runTest {
-            val exception = Exception()
-            every { localDataSource.hasPrivacyNoticeFor(PROJECT_ID, LANGUAGE) } returns false
-            coEvery {
-                remoteDataSource.getPrivacyNotice(
-                    PROJECT_ID,
-                    "${PRIVACY_NOTICE_FILE}_$LANGUAGE"
-                )
-            } throws exception
-
-            val results = configServiceImpl.getPrivacyNotice(PROJECT_ID, LANGUAGE).toList()
-
-            assertThat(results).isEqualTo(
-                listOf(
-                    InProgress(LANGUAGE),
-                    Failed(LANGUAGE, exception)
-                )
+    fun `should return a Failed if it fails to download the privacy notice with another exception`() = runTest {
+        val exception = Exception()
+        every { localDataSource.hasPrivacyNoticeFor(PROJECT_ID, LANGUAGE) } returns false
+        coEvery {
+            remoteDataSource.getPrivacyNotice(
+                PROJECT_ID,
+                "${PRIVACY_NOTICE_FILE}_$LANGUAGE",
             )
-            verify(exactly = 0) { localDataSource.storePrivacyNotice(PROJECT_ID, LANGUAGE, any()) }
-        }
+        } throws exception
+
+        val results = configServiceImpl.getPrivacyNotice(PROJECT_ID, LANGUAGE).toList()
+
+        assertThat(results).isEqualTo(
+            listOf(
+                InProgress(LANGUAGE),
+                Failed(LANGUAGE, exception),
+            ),
+        )
+        verify(exactly = 0) { localDataSource.storePrivacyNotice(PROJECT_ID, LANGUAGE, any()) }
+    }
 
     @Test
     fun `clearData should clear all the data`() = runTest {
@@ -231,5 +230,34 @@ class ConfigRepositoryImplTest {
         coVerify(exactly = 1) { localDataSource.clearProjectConfiguration() }
         coVerify(exactly = 1) { localDataSource.clearDeviceConfiguration() }
         verify(exactly = 1) { localDataSource.deletePrivacyNotices() }
+    }
+
+    @Test
+    fun `watchProjectConfiguration should emit values from the local data source`() = runTest {
+        val config1 = projectConfiguration.copy(projectId = "project1")
+        val config2 = projectConfiguration.copy(projectId = "project2")
+
+        coEvery { localDataSource.watchProjectConfiguration() } returns kotlinx.coroutines.flow.flow {
+            emit(config1)
+            emit(config2)
+        }
+
+        val emittedConfigs = configServiceImpl.watchProjectConfiguration().toList()
+
+        assertThat(emittedConfigs).hasSize(2)
+        assertThat(emittedConfigs[0]).isEqualTo(config1)
+        assertThat(emittedConfigs[1]).isEqualTo(config2)
+        coVerify(exactly = 0) { remoteDataSource.getProject(any()) }
+    }
+
+    @Test
+    fun `should return project config from local data source`() = runTest {
+        val config = projectConfiguration.copy(projectId = "project1")
+        coEvery { localDataSource.getProjectConfiguration() } returns config
+
+        val result = configServiceImpl.getProjectConfiguration()
+
+        assertThat(result).isEqualTo(config)
+        coVerify { localDataSource.getProjectConfiguration() }
     }
 }

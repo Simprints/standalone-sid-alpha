@@ -12,31 +12,35 @@ internal data class ApiOneToManyMatchPayload(
     val pool: ApiMatchPool,
     val matcher: String,
     val result: List<ApiMatchEntry>?,
-) : ApiEventPayload( startTime) {
-
+    val probeBiometricReferenceId: String? = null,
+) : ApiEventPayload(startTime) {
     @Keep
-    data class ApiMatchPool(val type: ApiMatchPoolType, val count: Int) {
-
+    data class ApiMatchPool(
+        val type: ApiMatchPoolType,
+        val count: Int,
+    ) {
         constructor(matchPool: MatchPool) :
             this(ApiMatchPoolType.valueOf(matchPool.type.toString()), matchPool.count)
     }
 
     @Keep
     enum class ApiMatchPoolType {
-
         USER,
         MODULE,
-        PROJECT;
+        PROJECT,
     }
 
     constructor(domainPayload: OneToManyMatchPayload) : this(
-        domainPayload.createdAt.fromDomainToApi(),
-        domainPayload.endedAt?.fromDomainToApi(),
-        ApiMatchPool(domainPayload.pool),
-        domainPayload.matcher,
-        domainPayload.result?.map { ApiMatchEntry(it) }
+        startTime = domainPayload.createdAt.fromDomainToApi(),
+        endTime = domainPayload.endedAt?.fromDomainToApi(),
+        pool = ApiMatchPool(domainPayload.pool),
+        matcher = domainPayload.matcher,
+        result = domainPayload.result?.map { ApiMatchEntry(it) },
+        probeBiometricReferenceId = when (domainPayload) {
+            is OneToManyMatchPayload.OneToManyMatchPayloadV2 -> null
+            is OneToManyMatchPayload.OneToManyMatchPayloadV3 -> domainPayload.probeBiometricReferenceId
+        },
     )
 
-    override fun getTokenizedFieldJsonPath(tokenKeyType: TokenKeyType): String? =
-        null // this payload doesn't have tokenizable fields
+    override fun getTokenizedFieldJsonPath(tokenKeyType: TokenKeyType): String? = null // this payload doesn't have tokenizable fields
 }

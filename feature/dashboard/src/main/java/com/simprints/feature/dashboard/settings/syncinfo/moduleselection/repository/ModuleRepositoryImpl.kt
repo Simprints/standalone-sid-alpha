@@ -2,10 +2,10 @@ package com.simprints.feature.dashboard.settings.syncinfo.moduleselection.reposi
 
 import com.simprints.core.domain.tokenization.values
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectQuery
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectQuery
 import com.simprints.infra.eventsync.EventSyncManager
-import com.simprints.infra.logging.LoggingConstants
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.SETTINGS
 import com.simprints.infra.logging.LoggingConstants.CrashReportingCustomKeys.MODULE_IDS
 import com.simprints.infra.logging.Simber
 import javax.inject.Inject
@@ -16,24 +16,24 @@ internal class ModuleRepositoryImpl @Inject constructor(
     private val enrolmentRecordRepository: EnrolmentRecordRepository,
     private val eventSyncManager: EventSyncManager,
 ) : ModuleRepository {
-
-    override suspend fun getModules(): List<Module> =
-        configManager.getProjectConfiguration().synchronization.down.moduleOptions.map {
-            Module(it, isModuleSelected(it.value))
-        }
+    override suspend fun getModules(): List<Module> = configManager.getProjectConfiguration().synchronization.down.moduleOptions.map {
+        Module(it, isModuleSelected(it.value))
+    }
 
     override suspend fun saveModules(modules: List<Module>) {
         setSelectedModules(modules.filter { it.isSelected })
         handleUnselectedModules(modules.filter { !it.isSelected })
     }
 
-    override suspend fun getMaxNumberOfModules(): Int =
-        configManager.getProjectConfiguration().synchronization.down.maxNbOfModules
+    override suspend fun getMaxNumberOfModules(): Int = configManager
+        .getProjectConfiguration()
+        .synchronization.down.maxNbOfModules
 
-    private suspend fun isModuleSelected(moduleName: String): Boolean {
-        return configManager.getDeviceConfiguration().selectedModules.values()
-            .contains(moduleName)
-    }
+    private suspend fun isModuleSelected(moduleName: String): Boolean = configManager
+        .getDeviceConfiguration()
+        .selectedModules
+        .values()
+        .contains(moduleName)
 
     private suspend fun setSelectedModules(selectedModules: List<Module>) {
         configManager.updateDeviceConfiguration {
@@ -47,7 +47,7 @@ internal class ModuleRepositoryImpl @Inject constructor(
 
     private suspend fun handleUnselectedModules(unselectedModules: List<Module>) {
         val queries = unselectedModules.map {
-            SubjectQuery(moduleId = it.name.value)
+            SubjectQuery(moduleId = it.name)
         }
         enrolmentRecordRepository.delete(queries)
 
@@ -57,10 +57,10 @@ internal class ModuleRepositoryImpl @Inject constructor(
     }
 
     private fun setCrashlyticsKeyForModules(modules: List<String>) {
-        Simber.tag(MODULE_IDS, true).i(modules.toString().take(80))
+        Simber.setUserProperty(MODULE_IDS, modules.toString())
     }
 
     private fun logMessageForCrashReport(message: String) {
-        Simber.tag(LoggingConstants.CrashReportTag.SETTINGS.name).i(message.take(99))
+        Simber.i(message, tag = SETTINGS)
     }
 }

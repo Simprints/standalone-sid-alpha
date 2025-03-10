@@ -3,7 +3,9 @@ package com.simprints.feature.orchestrator.usecases.response
 import com.simprints.core.domain.response.AppErrorReason
 import com.simprints.face.capture.FaceCaptureResult
 import com.simprints.fingerprint.capture.FingerprintCaptureResult
+import com.simprints.infra.config.store.models.Project
 import com.simprints.infra.eventsync.sync.down.tasks.SubjectFactory
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.orchestration.data.ActionRequest
 import com.simprints.infra.orchestration.data.responses.AppEnrolResponse
@@ -16,8 +18,11 @@ internal class CreateEnrolResponseUseCase @Inject constructor(
     private val subjectFactory: SubjectFactory,
     private val enrolSubject: EnrolSubjectUseCase,
 ) {
-
-    suspend operator fun invoke(request: ActionRequest.EnrolActionRequest, results: List<Serializable>): AppResponse {
+    suspend operator fun invoke(
+        request: ActionRequest.EnrolActionRequest,
+        results: List<Serializable>,
+        project: Project
+    ): AppResponse {
         val fingerprintCapture = results.filterIsInstance(FingerprintCaptureResult::class.java).lastOrNull()
         val faceCapture = results.filterIsInstance(FaceCaptureResult::class.java).lastOrNull()
 
@@ -27,13 +32,13 @@ internal class CreateEnrolResponseUseCase @Inject constructor(
                 attendantId = request.userId,
                 moduleId = request.moduleId,
                 fingerprintResponse = fingerprintCapture,
-                faceResponse = faceCapture
+                faceResponse = faceCapture,
             )
-            enrolSubject(subject)
+            enrolSubject(subject, project)
 
             AppEnrolResponse(subject.subjectId)
         } catch (e: Exception) {
-            Simber.e(e)
+            Simber.e("Error creating enrol response", e, tag = ORCHESTRATION)
             AppErrorResponse(AppErrorReason.UNEXPECTED_ERROR)
         }
     }

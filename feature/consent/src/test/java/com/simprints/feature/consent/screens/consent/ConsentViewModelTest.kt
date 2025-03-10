@@ -10,8 +10,8 @@ import com.simprints.feature.exitform.ExitFormResult
 import com.simprints.infra.config.store.models.GeneralConfiguration
 import com.simprints.infra.config.store.models.ProjectConfiguration
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.events.SessionEventRepository
 import com.simprints.infra.events.event.domain.models.ConsentEvent
+import com.simprints.infra.events.session.SessionEventRepository
 import com.simprints.testtools.common.coroutines.TestCoroutineRule
 import com.simprints.testtools.common.livedata.getOrAwaitValue
 import io.mockk.MockKAnnotations
@@ -26,11 +26,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import com.simprints.infra.resources.R as IDR
-
 
 class ConsentViewModelTest {
-
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
 
@@ -45,7 +42,6 @@ class ConsentViewModelTest {
 
     @MockK
     private lateinit var projectConfig: ProjectConfiguration
-
 
     @MockK
     private lateinit var eventRepository: SessionEventRepository
@@ -65,7 +61,7 @@ class ConsentViewModelTest {
             timeHelper,
             configManager,
             eventRepository,
-            CoroutineScope(testCoroutineRule.testCoroutineDispatcher)
+            CoroutineScope(testCoroutineRule.testCoroutineDispatcher),
         )
     }
 
@@ -86,7 +82,6 @@ class ConsentViewModelTest {
         assertThat(state.parentalTextBuilder).isNotNull()
     }
 
-
     @Test
     fun `loadConfiguration passes correct values from config without parental consent to state`() = runTest {
         every { projectConfig.consent.allowParentalConsent } returns false
@@ -98,7 +93,6 @@ class ConsentViewModelTest {
         assertThat(state.showParentalConsent).isFalse()
         assertThat(state.parentalTextBuilder).isNull()
     }
-
 
     @Test
     fun `selected tab index is saved in the state`() = runTest {
@@ -139,39 +133,6 @@ class ConsentViewModelTest {
             assertThat(payload.consentType).isEqualTo(ConsentEvent.ConsentPayload.Type.PARENTAL)
             assertThat(payload.result).isEqualTo(ConsentEvent.ConsentPayload.Result.DECLINED)
         }
-    }
-
-    @Test
-    fun `declineClicked triggers correct exit form for face only modality`() {
-        every { projectConfig.general.modalities } returns listOf(GeneralConfiguration.Modality.FACE)
-
-        vm.declineClicked(ConsentTab.PARENTAL)
-        val result = vm.showExitForm.getOrAwaitValue()
-
-        assertThat(result.getContentIfNotHandled()?.titleRes).isEqualTo(IDR.string.exit_form_title_face)
-    }
-
-    @Test
-    fun `declineClicked triggers correct exit form for fingerprint only modality`() {
-        every { projectConfig.general.modalities } returns listOf(GeneralConfiguration.Modality.FINGERPRINT)
-
-        vm.declineClicked(ConsentTab.PARENTAL)
-        val result = vm.showExitForm.getOrAwaitValue()
-
-        assertThat(result.getContentIfNotHandled()?.titleRes).isEqualTo(IDR.string.exit_form_title_fingerprinting)
-    }
-
-    @Test
-    fun `declineClicked triggers correct exit form for dual modality`() {
-        every { projectConfig.general.modalities } returns listOf(
-            GeneralConfiguration.Modality.FINGERPRINT,
-            GeneralConfiguration.Modality.FACE,
-        )
-
-        vm.declineClicked(ConsentTab.PARENTAL)
-        val result = vm.showExitForm.getOrAwaitValue()
-
-        assertThat(result.getContentIfNotHandled()?.titleRes).isEqualTo(IDR.string.exit_form_title_biometrics)
     }
 
     @Test

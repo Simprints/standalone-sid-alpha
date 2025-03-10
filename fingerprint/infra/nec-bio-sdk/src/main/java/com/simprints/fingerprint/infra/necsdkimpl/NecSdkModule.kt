@@ -22,22 +22,20 @@ annotation class NecSdk
 @Module
 @InstallIn(SingletonComponent::class)
 object NecSdkModule {
-
     @Provides
     @Singleton
     internal fun provideFingerprintBioSdk(
         sdkInitializer: SdkInitializerImpl,
         fingerprintImageProvider: FingerprintImageProviderImpl,
         fingerprintTemplateProvider: FingerprintTemplateProviderImpl,
-        fingerprintMatcher: FingerprintMatcherImpl
-    ): FingerprintBioSdk<Unit, Unit, Unit, FingerprintTemplateAcquisitionSettings, FingerprintTemplateMetadata, NecMatchingSettings> {
-        return FingerprintBioSdk(
+        fingerprintMatcher: FingerprintMatcherImpl,
+    ): FingerprintBioSdk<Unit, Unit, Unit, FingerprintTemplateAcquisitionSettings, FingerprintTemplateMetadata, NecMatchingSettings> =
+        FingerprintBioSdk(
             sdkInitializer,
             fingerprintImageProvider,
             fingerprintTemplateProvider,
-            fingerprintMatcher
+            fingerprintMatcher,
         )
-    }
 
 
 }

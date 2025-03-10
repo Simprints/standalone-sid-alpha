@@ -3,6 +3,7 @@ package com.simprints.infra.recent.user.activity.local
 import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.datastore.core.DataMigration
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.recent.user.activity.ProtoRecentUserActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -11,13 +12,14 @@ import javax.inject.Inject
 /**
  * Can be removed once all the devices have been updated to 2022.3.0
  */
-internal class RecentUserActivitySharedPrefsMigration @Inject constructor(@ApplicationContext ctx: Context) :
-    DataMigration<ProtoRecentUserActivity> {
-
+internal class RecentUserActivitySharedPrefsMigration @Inject constructor(
+    @ApplicationContext ctx: Context,
+) : DataMigration<ProtoRecentUserActivity> {
     private val prefs = ctx.getSharedPreferences(PREF_FILE_NAME, PREF_MODE)
 
     override suspend fun cleanUp() {
-        prefs.edit()
+        prefs
+            .edit()
             .remove(ENROLMENTS_KEY)
             .remove(IDENTIFICATIONS_KEY)
             .remove(VERIFICATIONS_KEY)
@@ -26,12 +28,13 @@ internal class RecentUserActivitySharedPrefsMigration @Inject constructor(@Appli
             .remove(LAST_SCANNER_USED_KEY)
             .remove(LAST_MAC_ADDRESS_KEY)
             .apply()
-        Simber.i("Migration of recent user activity to Datastore done")
+        Simber.i("Migration of recent user activity to Datastore done", tag = MIGRATION)
     }
 
     override suspend fun migrate(currentData: ProtoRecentUserActivity): ProtoRecentUserActivity {
-        Simber.i("Start migration of recent user activity to Datastore")
-        return currentData.toBuilder()
+        Simber.i("Start migration of recent user activity to Datastore", tag = MIGRATION)
+        return currentData
+            .toBuilder()
             .setEnrolmentsToday(prefs.getInt(ENROLMENTS_KEY, 0))
             .setIdentificationsToday(prefs.getInt(IDENTIFICATIONS_KEY, 0))
             .setVerificationsToday(prefs.getInt(VERIFICATIONS_KEY, 0))

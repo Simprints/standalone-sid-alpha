@@ -1,12 +1,11 @@
 package com.simprints.infra.orchestration.data.responses
 
 import com.google.common.truth.Truth.assertThat
+import com.simprints.feature.exitform.ExitFormOption
 import com.simprints.feature.exitform.ExitFormResult
-import com.simprints.feature.exitform.config.ExitFormOption
 import org.junit.Test
 
 class AppRefusalResponseTest {
-
     @Test
     fun testFromResult() {
         mapOf(

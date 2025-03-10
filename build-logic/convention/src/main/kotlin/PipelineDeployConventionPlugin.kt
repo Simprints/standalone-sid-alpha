@@ -1,6 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
 import com.github.triplet.gradle.play.PlayPublisherExtension
-import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.apply
@@ -8,15 +7,13 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.extra
 
 class PipelineDeployConventionPlugin : Plugin<Project> {
-
     override fun apply(target: Project) {
         with(target) {
-            apply(from = "${rootDir}/build-logic/signing_info.gradle.kts")
+            apply(from = "$rootDir/build-logic/signing_info.gradle.kts")
             val props = extra.properties
 
             with(pluginManager) {
                 apply("com.github.triplet.play")
-                apply("com.google.firebase.appdistribution")
             }
 
             extensions.configure<PlayPublisherExtension> {
@@ -32,7 +29,6 @@ class PipelineDeployConventionPlugin : Plugin<Project> {
                         storeFile = file(props["store_file"] as String)
                         storePassword = props["store_password"] as String
                     }
-
                 }
 
                 buildFeatures.buildConfig = true
@@ -42,23 +38,9 @@ class PipelineDeployConventionPlugin : Plugin<Project> {
                     }
                     getByName("staging") {
                         signingConfig = signingConfigs.getByName("config")
-
-                        firebaseAppDistribution {
-                            artifactType = "APK"
-                            serviceCredentialsFile =
-                                "$rootDir/id/src/serviceCredentialsFile.json"
-                            groups = "pre-release-testers"
-                        }
                     }
                     getByName("debug") {
                         signingConfig = signingConfigs.getByName("config")
-                        firebaseAppDistribution {
-                            artifactType = "APK"
-                            serviceCredentialsFile =
-                                "$rootDir/id/src/serviceCredentialsFile.json"
-                            groups = "pre-release-testers"
-                        }
-
                     }
                 }
             }

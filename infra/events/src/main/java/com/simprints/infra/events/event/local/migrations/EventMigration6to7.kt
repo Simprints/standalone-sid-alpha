@@ -1,9 +1,10 @@
-package com.simprints.infra.events.local.migrations
+package com.simprints.infra.events.event.local.migrations
 
 import android.database.Cursor
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.simprints.core.tools.extentions.getStringWithColumnName
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 import org.json.JSONObject
 
@@ -12,20 +13,20 @@ import org.json.JSONObject
  * Changes OneToOneMatchEvent by adding fingerComparisonStrategy to all fingerprint matching events
  */
 internal class EventMigration6to7 : Migration(6, 7) {
-
     override fun migrate(database: SupportSQLiteDatabase) {
         try {
-            Simber.d("Migrating room db from schema 6 to schema 7.")
+            Simber.i("Migrating room db from schema 6 to schema 7.", tag = MIGRATION)
             migrateOneToOneMatchEvents(database)
-            Simber.d("Migration from schema 5 to schema 6 done.")
+            Simber.i("Migration from schema 5 to schema 6 done.", tag = MIGRATION)
         } catch (t: Throwable) {
-            Simber.e(t)
+            Simber.e("Failed to migrate room db from schema 6 to schema 7.", t, tag = MIGRATION)
         }
     }
 
     private fun migrateOneToOneMatchEvents(database: SupportSQLiteDatabase) {
         val eventsQuery = database.query(
-            "SELECT * FROM DbEvent WHERE type = ?", arrayOf("ONE_TO_ONE_MATCH")
+            "SELECT * FROM DbEvent WHERE type = ?",
+            arrayOf("ONE_TO_ONE_MATCH"),
         )
         eventsQuery.use {
             while (it.moveToNext()) {
@@ -41,7 +42,7 @@ internal class EventMigration6to7 : Migration(6, 7) {
     private fun migrateOneToOneMatchEvent(
         it: Cursor,
         database: SupportSQLiteDatabase,
-        id: String?
+        id: String?,
     ) {
         val jsonData = it.getStringWithColumnName(DB_EVENT_JSON_FIELD)
         jsonData?.let {
@@ -55,10 +56,8 @@ internal class EventMigration6to7 : Migration(6, 7) {
             val newJson = originalJson.put(DB_EVENT_JSON_EVENT_PAYLOAD, newPayload)
             database.execSQL(
                 "UPDATE DbEvent SET eventJson = ? WHERE id = ?",
-                arrayOf(newJson, id)
+                arrayOf(newJson, id),
             )
-
-
         }
     }
 
@@ -71,8 +70,5 @@ internal class EventMigration6to7 : Migration(6, 7) {
         private const val SAME_FINGER = "SAME_FINGER"
         private const val VERSION_PAYLOAD_NAME = "eventVersion"
         private const val NEW_EVENT_VERSION_VALUE = 2
-
     }
-
-
 }

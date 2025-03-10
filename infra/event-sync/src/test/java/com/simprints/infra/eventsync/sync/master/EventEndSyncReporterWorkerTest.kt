@@ -3,6 +3,8 @@ package com.simprints.infra.eventsync.sync.master
 import androidx.work.ListenableWorker
 import androidx.work.workDataOf
 import com.google.common.truth.Truth.assertThat
+import com.simprints.core.tools.time.TimeHelper
+import com.simprints.core.tools.time.Timestamp
 import com.simprints.infra.events.EventRepository
 import com.simprints.infra.eventsync.sync.common.EventSyncCache
 import com.simprints.infra.eventsync.sync.master.EventEndSyncReporterWorker.Companion.EVENT_DOWN_SYNC_SCOPE_TO_CLOSE
@@ -19,9 +21,11 @@ import org.junit.Rule
 import org.junit.Test
 
 internal class EventEndSyncReporterWorkerTest {
-
     @get:Rule
     val testCoroutineRule = TestCoroutineRule()
+
+    @MockK
+    lateinit var timeHelper: TimeHelper
 
     @MockK
     lateinit var syncCache: EventSyncCache
@@ -32,6 +36,7 @@ internal class EventEndSyncReporterWorkerTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this, relaxed = true)
+        every { timeHelper.now() } returns Timestamp(1)
     }
 
     @Test
@@ -94,6 +99,7 @@ internal class EventEndSyncReporterWorkerTest {
         },
         syncCache,
         eventRepository,
-        testCoroutineRule.testCoroutineDispatcher
+        timeHelper,
+        testCoroutineRule.testCoroutineDispatcher,
     )
 }

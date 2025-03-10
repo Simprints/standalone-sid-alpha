@@ -13,6 +13,7 @@ import com.simprints.core.tools.time.Timestamp
 import com.simprints.face.capture.FaceCaptureResult
 import com.simprints.face.capture.models.FaceDetection
 import com.simprints.face.capture.usecases.BitmapToByteArrayUseCase
+import com.simprints.face.capture.usecases.IsUsingAutoCaptureUseCase
 import com.simprints.face.capture.usecases.SaveFaceImageUseCase
 import com.simprints.face.capture.usecases.SimpleCaptureEventReporter
 import com.simprints.face.infra.biosdkresolver.ResolveFaceBioSdkUseCase
@@ -22,8 +23,12 @@ import com.simprints.infra.license.LicenseRepository
 import com.simprints.infra.license.LicenseStatus
 import com.simprints.infra.license.SaveLicenseCheckEventUseCase
 import com.simprints.infra.license.determineLicenseStatus
+import com.simprints.infra.license.models.License
+import com.simprints.infra.license.models.LicenseState
+import com.simprints.infra.license.models.LicenseVersion
 import com.simprints.infra.license.models.Vendor
-import com.simprints.infra.logging.LoggingConstants.CrashReportTag
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.FACE_CAPTURE
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.LICENSE
 import com.simprints.infra.logging.Simber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.filterNotNull
@@ -31,11 +36,9 @@ import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
-import com.simprints.infra.license.models.License
-import com.simprints.infra.license.models.LicenseState
-import com.simprints.infra.license.models.LicenseVersion
 
 @HiltViewModel
 internal class FaceCaptureViewModel @Inject constructor(
@@ -47,12 +50,13 @@ internal class FaceCaptureViewModel @Inject constructor(
     private val licenseRepository: LicenseRepository,
     private val resolveFaceBioSdk: ResolveFaceBioSdkUseCase,
     private val saveLicenseCheckEvent: SaveLicenseCheckEventUseCase,
+    private val isUsingAutoCapture: IsUsingAutoCaptureUseCase,
     @DeviceID private val deviceID: String,
 ) : ViewModel() {
-
     // Updated in live feedback screen
     var attemptNumber: Int = 0
     var samplesToCapture = 1
+    var initialised = false
 
     var shouldCheckCameraPermissions = AtomicBoolean(true)
 
@@ -78,9 +82,9 @@ internal class FaceCaptureViewModel @Inject constructor(
         get() = _invalidLicense
     private val _invalidLicense = MutableLiveData<LiveDataEvent>()
 
-    init {
-        Simber.tag(CrashReportTag.FACE_CAPTURE.name).i("Starting face capture flow")
-    }
+    val isAutoCaptureEnabled: LiveData<Boolean>
+        get() = _isAutoCaptureEnabled
+    private val _isAutoCaptureEnabled = MutableLiveData<Boolean>()
 
     fun setupCapture(samplesToCapture: Int) {
         this.samplesToCapture = samplesToCapture
@@ -96,6 +100,7 @@ internal class FaceCaptureViewModel @Inject constructor(
     fun getSampleDetection() = faceDetections.firstOrNull()
 
     fun flowFinished() {
+        Simber.i("Finishing capture flow", tag = FACE_CAPTURE)
         viewModelScope.launch {
             val projectConfiguration = configManager.getProjectConfiguration()
             if (projectConfiguration.face?.imageSavingStrategy?.shouldSaveImage() == true) {
@@ -104,16 +109,20 @@ internal class FaceCaptureViewModel @Inject constructor(
 
             val items = faceDetections.mapIndexed { index, detection ->
                 FaceCaptureResult.Item(
-                    captureEventId = detection.id, index = index, sample = FaceCaptureResult.Sample(
+                    captureEventId = detection.id,
+                    index = index,
+                    sample = FaceCaptureResult.Sample(
                         faceId = detection.id,
                         template = detection.face?.template ?: ByteArray(0),
                         imageRef = detection.securedImageRef,
                         format = detection.face?.format ?: "",
-                    )
+                    ),
                 )
             }
+            val referenceId = UUID.randomUUID().toString()
+            eventReporter.addBiometricReferenceCreationEvents(referenceId, items.mapNotNull { it.captureEventId })
 
-            _finishFlowEvent.send(FaceCaptureResult(items))
+            _finishFlowEvent.send(FaceCaptureResult(referenceId, items))
         }
     }
 
@@ -126,33 +135,39 @@ internal class FaceCaptureViewModel @Inject constructor(
     }
 
     fun recapture() {
-        Simber.tag(CrashReportTag.FACE_CAPTURE.name).i("Starting face recapture flow")
+        Simber.i("Starting face recapture flow", tag = FACE_CAPTURE)
         faceDetections = listOf()
         _recaptureEvent.send()
     }
 
     private fun saveFaceDetections() {
-        Simber.tag(CrashReportTag.FACE_CAPTURE.name).i("Saving captures to disk")
+        Simber.i("Saving captures to disk", tag = FACE_CAPTURE)
         faceDetections.forEach { saveImage(it, it.id) }
     }
 
-    private fun saveImage(faceDetection: FaceDetection, captureEventId: String) {
+    private fun saveImage(
+        faceDetection: FaceDetection,
+        captureEventId: String,
+    ) {
         runBlocking {
             faceDetection.securedImageRef = saveFaceImage(bitmapToByteArray(faceDetection.bitmap), captureEventId)
         }
     }
 
     fun submitError(throwable: Throwable) {
-        Simber.e(throwable)
+        Simber.e("Face capture failed", throwable, FACE_CAPTURE)
         _unexpectedErrorEvent.send()
     }
 
     fun addOnboardingComplete(startTime: Timestamp) {
+        Simber.i("Face capture onboarding complete", tag = FACE_CAPTURE)
         eventReporter.addOnboardingCompleteEvent(startTime)
     }
 
-    fun addCaptureConfirmationAction(startTime: Timestamp, isContinue: Boolean) {
+    fun addCaptureConfirmationAction(
+        startTime: Timestamp,
+        isContinue: Boolean,
+    ) {
         eventReporter.addCaptureConfirmationEvent(startTime, isContinue)
     }
-
 }

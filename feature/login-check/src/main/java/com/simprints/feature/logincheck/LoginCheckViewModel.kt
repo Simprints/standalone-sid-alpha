@@ -23,6 +23,7 @@ import com.simprints.feature.logincheck.usecases.UpdateSessionScopePayloadUseCas
 import com.simprints.feature.logincheck.usecases.UpdateStoredUserIdUseCase
 import com.simprints.infra.config.store.models.ProjectState
 import com.simprints.infra.config.sync.ConfigManager
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.LOGIN
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.orchestration.data.ActionRequest
 import com.simprints.infra.security.SecurityManager
@@ -50,7 +51,6 @@ class LoginCheckViewModel @Inject internal constructor(
     private val updateProjectInCurrentSession: UpdateProjectInCurrentSessionUseCase,
     private val updateStoredUserId: UpdateStoredUserIdUseCase,
 ) : ViewModel() {
-
     private var cachedRequest: ActionRequest? = null
     private val loginAlreadyTried: AtomicBoolean = AtomicBoolean(false)
 
@@ -70,12 +70,11 @@ class LoginCheckViewModel @Inject internal constructor(
         get() = _returnLoginNotComplete
     private val _returnLoginNotComplete = MutableLiveData<LiveDataEvent>()
 
-
     fun isDeviceSafe(): Boolean = try {
         rootManager.checkIfDeviceIsRooted()
         true
     } catch (e: RootedDeviceException) {
-        Simber.e(e)
+        Simber.e("Rooted device detected on login check", e, tag = LOGIN)
         _showAlert.send(LoginCheckError.ROOTED_DEVICE)
         false
     }
@@ -97,6 +96,7 @@ class LoginCheckViewModel @Inject internal constructor(
             _returnLoginNotComplete.send()
             return
         }
+        Simber.i("Start log-in attempt", tag = LOGIN)
         addAuthorizationEvent(actionRequest, false)
         cachedRequest = actionRequest
         loginAlreadyTried.set(true)
@@ -107,6 +107,7 @@ class LoginCheckViewModel @Inject internal constructor(
     }
 
     fun handleLoginResult(result: LoginResult) = viewModelScope.launch {
+        Simber.i("Log-in result: $result", tag = LOGIN)
         val requestAction = cachedRequest?.takeIf { result.isSuccess }
         if (requestAction != null) {
             validateProjectAndProceed(requestAction)
@@ -134,16 +135,15 @@ class LoginCheckViewModel @Inject internal constructor(
         proceedWithAction(actionRequest)
     }
 
-    private suspend fun proceedWithAction(actionRequest: ActionRequest) = viewModelScope.launch {
+    private fun proceedWithAction(actionRequest: ActionRequest) = viewModelScope.launch {
         updateProjectInCurrentSession()
         updateStoredUserId(actionRequest.userId)
         awaitAll(
             async { updateDatabaseCountsInCurrentSession() },
             async { addAuthorizationEvent(actionRequest, true) },
-            async { extractParametersForCrashReport(actionRequest) }
+            async { extractParametersForCrashReport(actionRequest) },
         )
 //        startBackgroundSync()
         _proceedWithAction.send(actionRequest)
     }
-
 }

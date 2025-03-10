@@ -10,20 +10,18 @@ import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordMov
 import com.simprints.infra.eventsync.event.remote.models.subject.biometricref.ApiBiometricReference
 import com.simprints.infra.eventsync.event.remote.models.subject.biometricref.fromApiToDomain
 
-
 @Keep
 @JsonInclude(Include.NON_NULL)
 internal data class ApiEnrolmentRecordMovePayload(
     val enrolmentRecordCreation: ApiEnrolmentRecordCreationInMove,
-    val enrolmentRecordDeletion: ApiEnrolmentRecordDeletionInMove
+    val enrolmentRecordDeletion: ApiEnrolmentRecordDeletionInMove,
 ) : ApiEnrolmentRecordEventPayload(ApiEnrolmentRecordPayloadType.EnrolmentRecordMove) {
-
     @Keep
     data class ApiEnrolmentRecordDeletionInMove(
         val subjectId: String,
         val projectId: String,
         val moduleId: String,
-        val attendantId: String
+        val attendantId: String,
     )
 
     @Keep
@@ -32,31 +30,26 @@ internal data class ApiEnrolmentRecordMovePayload(
         val projectId: String,
         val moduleId: String,
         val attendantId: String,
-        val biometricReferences: List<ApiBiometricReference>?
+        val biometricReferences: List<ApiBiometricReference>?,
     )
-
-    companion object {
-        const val ENROLMENT_RECORD_MOVE = "EnrolmentRecordMove"
-    }
 }
 
-
-internal fun ApiEnrolmentRecordMovePayload.fromApiToDomain() =
-    EnrolmentRecordMoveEvent.EnrolmentRecordMovePayload(
-        with(enrolmentRecordCreation) {
-            EnrolmentRecordCreationInMove(
-                subjectId,
-                projectId,
-                moduleId.asTokenizableEncrypted(),
-                attendantId.asTokenizableEncrypted(),
-                biometricReferences?.map { it.fromApiToDomain() })
-        },
-        enrolmentRecordDeletion.let {
-            EnrolmentRecordDeletionInMove(
-                it.subjectId,
-                it.projectId,
-                it.moduleId.asTokenizableEncrypted(),
-                it.attendantId.asTokenizableEncrypted()
-            )
-        }
-    )
+internal fun ApiEnrolmentRecordMovePayload.fromApiToDomain() = EnrolmentRecordMoveEvent.EnrolmentRecordMovePayload(
+    with(enrolmentRecordCreation) {
+        EnrolmentRecordCreationInMove(
+            subjectId,
+            projectId,
+            moduleId.asTokenizableEncrypted(),
+            attendantId.asTokenizableEncrypted(),
+            biometricReferences?.map { it.fromApiToDomain() },
+        )
+    },
+    enrolmentRecordDeletion.let {
+        EnrolmentRecordDeletionInMove(
+            it.subjectId,
+            it.projectId,
+            it.moduleId.asTokenizableEncrypted(),
+            it.attendantId.asTokenizableEncrypted(),
+        )
+    },
+)

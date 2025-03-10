@@ -3,6 +3,7 @@ package com.simprints.infra.sync
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
 import androidx.work.workDataOf
@@ -19,11 +20,14 @@ import com.simprints.infra.sync.extensions.anyRunning
 import com.simprints.infra.sync.extensions.cancelWorkers
 import com.simprints.infra.sync.extensions.schedulePeriodicWorker
 import com.simprints.infra.sync.extensions.startWorker
+import com.simprints.infra.sync.files.FileUpSyncWorker
 import com.simprints.infra.sync.firmware.FirmwareFileUpdateWorker
 import com.simprints.infra.sync.firmware.ShouldScheduleFirmwareUpdateUseCase
-import com.simprints.infra.sync.images.ImageUpSyncWorker
 import com.simprints.infra.sync.usecase.CleanupDeprecatedWorkersUseCase
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,37 +42,37 @@ internal class SyncOrchestratorImpl @Inject constructor(
     private val cleanupDeprecatedWorkers: CleanupDeprecatedWorkersUseCase,
     @AppScope private val appScope: CoroutineScope,
 ) : SyncOrchestrator {
-
     init {
         appScope.launch {
             // Stop image upload when event sync starts
-            workManager.getWorkInfosFlow(
-                WorkQuery.fromUniqueWorkNames(
-                    SyncConstants.EVENT_SYNC_WORK_NAME,
-                    SyncConstants.EVENT_SYNC_WORK_NAME_ONE_TIME,
-                )
-            ).collect { workInfoList ->
-                if (workInfoList.anyRunning()) rescheduleImageUpSync()
-            }
+            workManager
+                .getWorkInfosFlow(
+                    WorkQuery.fromUniqueWorkNames(
+                        SyncConstants.EVENT_SYNC_WORK_NAME,
+                        SyncConstants.EVENT_SYNC_WORK_NAME_ONE_TIME,
+                    ),
+                ).collect { workInfoList ->
+                    if (workInfoList.anyRunning()) rescheduleImageUpSync()
+                }
         }
     }
 
-    override suspend fun scheduleBackgroundWork() {
+    override suspend fun scheduleBackgroundWork(withDelay: Boolean) {
         if (authStore.signedInProjectId.isNotEmpty()) {
             workManager.schedulePeriodicWorker<ProjectConfigDownSyncWorker>(
                 SyncConstants.PROJECT_SYNC_WORK_NAME,
-                SyncConstants.PROJECT_SYNC_REPEAT_INTERVAL
+                SyncConstants.PROJECT_SYNC_REPEAT_INTERVAL,
             )
             workManager.schedulePeriodicWorker<DeviceConfigDownSyncWorker>(
                 SyncConstants.DEVICE_SYNC_WORK_NAME,
-                SyncConstants.DEVICE_SYNC_REPEAT_INTERVAL
+                SyncConstants.DEVICE_SYNC_REPEAT_INTERVAL,
             )
-            workManager.schedulePeriodicWorker<ImageUpSyncWorker>(
-                SyncConstants.IMAGE_UP_SYNC_WORK_NAME,
-                SyncConstants.IMAGE_UP_SYNC_REPEAT_INTERVAL,
-                constraints = getImageUploadConstraints()
+            workManager.schedulePeriodicWorker<FileUpSyncWorker>(
+                SyncConstants.FILE_UP_SYNC_WORK_NAME,
+                SyncConstants.FILE_UP_SYNC_REPEAT_INTERVAL,
+                constraints = getImageUploadConstraints(),
             )
-            rescheduleEventSync()
+            rescheduleEventSync(withDelay)
             if (shouldScheduleFirmwareUpdate()) {
                 workManager.schedulePeriodicWorker<FirmwareFileUpdateWorker>(
                     SyncConstants.FIRMWARE_UPDATE_WORK_NAME,
@@ -84,25 +88,33 @@ internal class SyncOrchestratorImpl @Inject constructor(
         workManager.cancelWorkers(
             SyncConstants.PROJECT_SYNC_WORK_NAME,
             SyncConstants.DEVICE_SYNC_WORK_NAME,
-            SyncConstants.IMAGE_UP_SYNC_WORK_NAME,
+            SyncConstants.FILE_UP_SYNC_WORK_NAME,
             SyncConstants.EVENT_SYNC_WORK_NAME,
             SyncConstants.FIRMWARE_UPDATE_WORK_NAME,
         )
         stopEventSync()
     }
 
-    override fun startProjectSync() {
-        workManager.startWorker<ProjectConfigDownSyncWorker>(SyncConstants.PROJECT_SYNC_WORK_NAME)
-    }
-
-    override fun startDeviceSync() {
+    override fun refreshConfiguration(): Flow<Unit> {
+        workManager.startWorker<ProjectConfigDownSyncWorker>(SyncConstants.PROJECT_SYNC_WORK_NAME_ONE_TIME)
         workManager.startWorker<DeviceConfigDownSyncWorker>(SyncConstants.DEVICE_SYNC_WORK_NAME_ONE_TIME)
+
+        return workManager
+            .getWorkInfosFlow(
+                WorkQuery.fromUniqueWorkNames(
+                    SyncConstants.PROJECT_SYNC_WORK_NAME_ONE_TIME,
+                    SyncConstants.DEVICE_SYNC_WORK_NAME_ONE_TIME,
+                ),
+            ).filter { workInfoList ->
+                workInfoList.none { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }
+            }.map { } // Converts flow emissions to Unit value as we only care about when it happens, not the value
     }
 
-    override fun rescheduleEventSync() {
+    override fun rescheduleEventSync(withDelay: Boolean) {
         workManager.schedulePeriodicWorker<EventSyncMasterWorker>(
             SyncConstants.EVENT_SYNC_WORK_NAME,
             SyncConstants.EVENT_SYNC_WORKER_INTERVAL,
+            initialDelay = if (withDelay) SyncConstants.EVENT_SYNC_WORKER_INTERVAL else 0,
             tags = eventSyncManager.getPeriodicWorkTags(),
         )
     }
@@ -126,21 +138,24 @@ internal class SyncOrchestratorImpl @Inject constructor(
     }
 
     override suspend fun rescheduleImageUpSync() {
-        workManager.schedulePeriodicWorker<ImageUpSyncWorker>(
-            SyncConstants.IMAGE_UP_SYNC_WORK_NAME,
-            SyncConstants.IMAGE_UP_SYNC_REPEAT_INTERVAL,
+        workManager.schedulePeriodicWorker<FileUpSyncWorker>(
+            SyncConstants.FILE_UP_SYNC_WORK_NAME,
+            SyncConstants.FILE_UP_SYNC_REPEAT_INTERVAL,
             initialDelay = SyncConstants.DEFAULT_BACKOFF_INTERVAL_MINUTES,
             existingWorkPolicy = ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
-            constraints = getImageUploadConstraints()
+            constraints = getImageUploadConstraints(),
         )
     }
 
-    override fun uploadEnrolmentRecords(id: String, subjectIds: List<String>) {
+    override fun uploadEnrolmentRecords(
+        id: String,
+        subjectIds: List<String>,
+    ) {
         workManager.startWorker<EnrolmentRecordWorker>(
             SyncConstants.RECORD_UPLOAD_WORK_NAME,
             inputData = workDataOf(
                 SyncConstants.RECORD_UPLOAD_INPUT_ID_NAME to id,
-                SyncConstants.RECORD_UPLOAD_INPUT_SUBJECT_IDS_NAME to subjectIds.toTypedArray()
+                SyncConstants.RECORD_UPLOAD_INPUT_SUBJECT_IDS_NAME to subjectIds.toTypedArray(),
             ),
         )
     }
@@ -153,7 +168,6 @@ internal class SyncOrchestratorImpl @Inject constructor(
     override fun cleanupWorkers() {
         cleanupDeprecatedWorkers()
     }
-
 
     private suspend fun getImageUploadConstraints(): Constraints {
         val networkType = configManager

@@ -2,9 +2,11 @@ package com.simprints.infra.eventsync.event.remote.models
 
 import androidx.annotation.Keep
 import com.simprints.infra.events.event.domain.models.EventType
+import com.simprints.infra.events.event.domain.models.EventType.AGE_GROUP_SELECTION
 import com.simprints.infra.events.event.domain.models.EventType.ALERT_SCREEN
 import com.simprints.infra.events.event.domain.models.EventType.AUTHENTICATION
 import com.simprints.infra.events.event.domain.models.EventType.AUTHORIZATION
+import com.simprints.infra.events.event.domain.models.EventType.BIOMETRIC_REFERENCE_CREATION
 import com.simprints.infra.events.event.domain.models.EventType.CALLBACK_CONFIRMATION
 import com.simprints.infra.events.event.domain.models.EventType.CALLBACK_ENROLMENT
 import com.simprints.infra.events.event.domain.models.EventType.CALLBACK_ERROR
@@ -20,8 +22,8 @@ import com.simprints.infra.events.event.domain.models.EventType.CANDIDATE_READ
 import com.simprints.infra.events.event.domain.models.EventType.COMPLETION_CHECK
 import com.simprints.infra.events.event.domain.models.EventType.CONNECTIVITY_SNAPSHOT
 import com.simprints.infra.events.event.domain.models.EventType.CONSENT
-import com.simprints.infra.events.event.domain.models.EventType.ENROLMENT_V1
 import com.simprints.infra.events.event.domain.models.EventType.ENROLMENT_V2
+import com.simprints.infra.events.event.domain.models.EventType.ENROLMENT_V4
 import com.simprints.infra.events.event.domain.models.EventType.EVENT_DOWN_SYNC_REQUEST
 import com.simprints.infra.events.event.domain.models.EventType.EVENT_UP_SYNC_REQUEST
 import com.simprints.infra.events.event.domain.models.EventType.FACE_CAPTURE
@@ -43,114 +45,115 @@ import com.simprints.infra.events.event.domain.models.EventType.SCANNER_CONNECTI
 import com.simprints.infra.events.event.domain.models.EventType.SCANNER_FIRMWARE_UPDATE
 import com.simprints.infra.events.event.domain.models.EventType.SUSPICIOUS_INTENT
 import com.simprints.infra.events.event.domain.models.EventType.VERO_2_INFO_SNAPSHOT
-import com.simprints.infra.events.event.domain.models.EventType.AGE_GROUP_SELECTION
 
 @Keep
 internal enum class ApiEventPayloadType {
-
     // a constant key is required to serialise/deserialize
     // ApiEventPayload correctly with Jackson (see annotation in ApiEventPayload).
     // Add a key in the companion object for each enum value
 
-    /* key added: CALLOUT_KEY */
+    // key added: CALLOUT_KEY
     Callout,
 
-    /* key added: CALLBACK_KEY */
+    // key added: CALLBACK_KEY
     Callback,
 
-    /* key added: AUTHENTICATION_KEY */
+    // key added: AUTHENTICATION_KEY
     Authentication,
 
-    /* key added: CONSENT_KEY */
+    // key added: CONSENT_KEY
     Consent,
 
-    /* key added: ENROLMENT_KEY */
+    // key added: ENROLMENT_KEY
     Enrolment,
 
-    /* key added: AUTHORIZATION_KEY */
+    // key added: AUTHORIZATION_KEY
     Authorization,
 
-    /* key added: FINGERPRINT_CAPTURE_KEY */
+    // key added: FINGERPRINT_CAPTURE_KEY
     FingerprintCapture,
 
-    /* key added: FINGERPRINT_CAPTURE_BIOMETRICS_KEY */
+    // key added: FINGERPRINT_CAPTURE_BIOMETRICS_KEY
     FingerprintCaptureBiometrics,
 
-    /* key added: ONE_TO_ONE_MATCH_KEY */
+    // key added: ONE_TO_ONE_MATCH_KEY
     OneToOneMatch,
 
-    /* key added: ONE_TO_MANY_MATCH_KEY */
+    // key added: ONE_TO_MANY_MATCH_KEY
     OneToManyMatch,
 
-    /* key added: PERSON_CREATION_KEY */
+    // key added: PERSON_CREATION_KEY
     PersonCreation,
 
-    /* key added: ALERT_SCREEN_KEY */
+    // key added: ALERT_SCREEN_KEY
     AlertScreen,
 
-    /* key added: GUID_SELECTION_KEY */
+    // key added: GUID_SELECTION_KEY
     GuidSelection,
 
-    /* key added: CONNECTIVITY_SNAPSHOT_KEY */
+    // key added: CONNECTIVITY_SNAPSHOT_KEY
     ConnectivitySnapshot,
 
-    /* key added: REFUSAL_KEY */
+    // key added: REFUSAL_KEY
     Refusal,
 
-    /* key added: CANDIDATE_READ_KEY */
+    // key added: CANDIDATE_READ_KEY
     CandidateRead,
 
-    /* key added: SCANNER_CONNECTION_KEY */
+    // key added: SCANNER_CONNECTION_KEY
     ScannerConnection,
 
-    /* key added: VERO_2_INFO_SNAPSHOT_KEY */
+    // key added: VERO_2_INFO_SNAPSHOT_KEY
     Vero2InfoSnapshot,
 
-    /* key added: SCANNER_FIRMWARE_UPDATE_KEY */
+    // key added: SCANNER_FIRMWARE_UPDATE_KEY
     ScannerFirmwareUpdate,
 
-    /* key added: INVALID_INTENT_KEY */
+    // key added: INVALID_INTENT_KEY
     InvalidIntent,
 
-    /* key added: SUSPICIOUS_INTENT_KEY */
+    // key added: SUSPICIOUS_INTENT_KEY
     SuspiciousIntent,
 
-    /* key added: INTENT_PARSING_KEY */
+    // key added: INTENT_PARSING_KEY
     IntentParsing,
 
-    /* key added: COMPLETION_CHECK_KEY */
+    // key added: COMPLETION_CHECK_KEY
     CompletionCheck,
 
-    /* key added: FACE_ONBOARDING_COMPLETE_KEY */
+    // key added: FACE_ONBOARDING_COMPLETE_KEY
     FaceOnboardingComplete,
 
-    /* key added: FACE_FALLBACK_CAPTURE_KEY */
+    // key added: FACE_FALLBACK_CAPTURE_KEY
     FaceFallbackCapture,
 
-    /* key added: FACE_CAPTURE_KEY */
+    // key added: FACE_CAPTURE_KEY
     FaceCapture,
 
-    /* key added: FACE_CAPTURE_BIOMETRICS_KEY */
+    // key added: FACE_CAPTURE_BIOMETRICS_KEY
     FaceCaptureBiometrics,
 
-    /* key added: FACE_CAPTURE_CONFIRMATION_KEY */
+    // key added: FACE_CAPTURE_CONFIRMATION_KEY
     FaceCaptureConfirmation,
 
-    /* key added: EVENT_DOWN_SYNC_REQUEST_KEY */
+    // key added: EVENT_DOWN_SYNC_REQUEST_KEY
     EventDownSyncRequest,
 
-    /* key added: EVENT_UP_SYNC_REQUEST_KEY */
+    // key added: EVENT_UP_SYNC_REQUEST_KEY
     EventUpSyncRequest,
 
-    /* key added: LICENSE_CHECK_KEY */
+    // key added: LICENSE_CHECK_KEY
     LicenseCheck,
-    /* key added: AGE_GROUP_SELECTION_KEY */
+
+    // key added: AGE_GROUP_SELECTION_KEY
     AgeGroupSelection,
+
+    // key added: BIOMETRIC_REFERENCE_CREATION_KEY
+    BiometricReferenceCreation,
 
     ;
 
     companion object {
-
         const val CALLOUT_KEY = "Callout"
         const val CALLBACK_KEY = "Callback"
         const val AUTHENTICATION_KEY = "Authentication"
@@ -181,13 +184,14 @@ internal enum class ApiEventPayloadType {
         const val FINGERPRINT_CAPTURE_BIOMETRICS_KEY = "FingerprintCaptureBiometrics"
         const val EVENT_DOWN_SYNC_REQUEST_KEY = "EventDownSyncRequest"
         const val EVENT_UP_SYNC_REQUEST_KEY = "EventUpSyncRequest"
+        const val BIOMETRIC_REFERENCE_CREATION_KEY = "BiometricReferenceCreation"
     }
 }
 
 internal fun EventType.fromDomainToApi(): ApiEventPayloadType = when (this) {
     AUTHENTICATION -> ApiEventPayloadType.Authentication
     CONSENT -> ApiEventPayloadType.Consent
-    ENROLMENT_V1, ENROLMENT_V2 -> ApiEventPayloadType.Enrolment
+    ENROLMENT_V2, ENROLMENT_V4 -> ApiEventPayloadType.Enrolment
     AUTHORIZATION -> ApiEventPayloadType.Authorization
     FINGERPRINT_CAPTURE -> ApiEventPayloadType.FingerprintCapture
     ONE_TO_ONE_MATCH -> ApiEventPayloadType.OneToOneMatch
@@ -230,13 +234,13 @@ internal fun EventType.fromDomainToApi(): ApiEventPayloadType = when (this) {
     EVENT_UP_SYNC_REQUEST -> ApiEventPayloadType.EventUpSyncRequest
     LICENSE_CHECK -> ApiEventPayloadType.LicenseCheck
     AGE_GROUP_SELECTION -> ApiEventPayloadType.AgeGroupSelection
+    BIOMETRIC_REFERENCE_CREATION -> ApiEventPayloadType.BiometricReferenceCreation
 }
-
 
 internal fun ApiEventPayloadType.fromApiToDomain(): EventType = when (this) {
     ApiEventPayloadType.Authentication -> AUTHENTICATION
     ApiEventPayloadType.Consent -> CONSENT
-    ApiEventPayloadType.Enrolment -> ENROLMENT_V2
+    ApiEventPayloadType.Enrolment -> ENROLMENT_V4
     ApiEventPayloadType.Authorization -> AUTHORIZATION
     ApiEventPayloadType.FingerprintCapture -> FINGERPRINT_CAPTURE
     ApiEventPayloadType.OneToOneMatch -> ONE_TO_MANY_MATCH
@@ -264,6 +268,7 @@ internal fun ApiEventPayloadType.fromApiToDomain(): EventType = when (this) {
     ApiEventPayloadType.EventUpSyncRequest -> EVENT_UP_SYNC_REQUEST
     ApiEventPayloadType.LicenseCheck -> LICENSE_CHECK
     ApiEventPayloadType.AgeGroupSelection -> AGE_GROUP_SELECTION
+    ApiEventPayloadType.BiometricReferenceCreation -> BIOMETRIC_REFERENCE_CREATION
     ApiEventPayloadType.Callout -> throw UnsupportedOperationException("")
     ApiEventPayloadType.Callback -> throw UnsupportedOperationException("")
 }

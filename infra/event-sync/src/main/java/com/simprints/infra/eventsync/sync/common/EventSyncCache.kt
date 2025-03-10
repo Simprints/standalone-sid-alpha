@@ -4,11 +4,12 @@ import android.annotation.SuppressLint
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
 import com.simprints.core.DispatcherIO
+import com.simprints.core.tools.time.Timestamp
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.SYNC
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.security.SecurityManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,7 +19,6 @@ internal class EventSyncCache @Inject constructor(
     securityManager: SecurityManager,
     @DispatcherIO private val dispatcher: CoroutineDispatcher,
 ) {
-
     private val sharedForCounts =
         securityManager.buildEncryptedSharedPreferences(FILENAME_FOR_DOWN_COUNTS_SHARED_PREFS)
     private val sharedForProgresses =
@@ -26,21 +26,28 @@ internal class EventSyncCache @Inject constructor(
     private val sharedForLastSyncTime =
         securityManager.buildEncryptedSharedPreferences(FILENAME_FOR_LAST_SYNC_TIME_SHARED_PREFS)
 
-    suspend fun readLastSuccessfulSyncTime(): Date? = withContext(dispatcher) {
-        val dateLong = sharedForLastSyncTime.getLong(PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY, -1)
-        if (dateLong > -1) Date(dateLong) else null
+    suspend fun readLastSuccessfulSyncTime(): Timestamp? = withContext(dispatcher) {
+        sharedForLastSyncTime
+            .getLong(PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY, -1)
+            .takeIf { it >= 0 }
+            ?.let { Timestamp(it) }
     }
 
-    suspend fun storeLastSuccessfulSyncTime(lastSyncTime: Date?): Unit = withContext(dispatcher) {
-        sharedForLastSyncTime.edit()
-            .putLong(PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY, lastSyncTime?.time ?: -1).apply()
+    suspend fun storeLastSuccessfulSyncTime(lastSyncTime: Timestamp?): Unit = withContext(dispatcher) {
+        sharedForLastSyncTime
+            .edit()
+            .putLong(PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY, lastSyncTime?.ms ?: -1)
+            .apply()
     }
 
     suspend fun readProgress(workerId: String): Int = withContext(dispatcher) {
         sharedForProgresses.getInt(workerId, 0)
     }
 
-    suspend fun saveProgress(workerId: String, progress: Int): Unit = withContext(dispatcher) {
+    suspend fun saveProgress(
+        workerId: String,
+        progress: Int,
+    ): Unit = withContext(dispatcher) {
         sharedForProgresses.edit().putInt(workerId, progress).commit()
     }
 
@@ -52,7 +59,10 @@ internal class EventSyncCache @Inject constructor(
         sharedForCounts.getInt(workerId, 0)
     }
 
-    suspend fun saveMax(workerId: String, max: Int?): Unit = withContext(dispatcher) {
+    suspend fun saveMax(
+        workerId: String,
+        max: Int?,
+    ): Unit = withContext(dispatcher) {
         sharedForCounts.edit(commit = true) {
             if (max == null) {
                 putBoolean(KEY_IGNORE_MAX, true)
@@ -71,12 +81,11 @@ internal class EventSyncCache @Inject constructor(
             sharedForProgresses.edit().clear().commit()
             sharedForCounts.edit().clear().commit()
         } catch (ex: SecurityException) {
-            Simber.e(ex)
+            Simber.e("Crashed during event sync cleanup", ex, tag = SYNC)
         }
     }
 
     companion object {
-
         @VisibleForTesting
         const val PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY = "PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY"
 

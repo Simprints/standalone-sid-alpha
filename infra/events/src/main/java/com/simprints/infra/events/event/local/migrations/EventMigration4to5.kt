@@ -2,18 +2,18 @@ package com.simprints.infra.events.event.local.migrations
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 
 /**
  * This migration updates EventLabels payload, removing the parameter subjectId, as it is no longer
  * being used.
  */
-internal class EventMigration4to5: Migration(4, 5)  {
-
+internal class EventMigration4to5 : Migration(4, 5) {
     override fun migrate(database: SupportSQLiteDatabase) {
-        Simber.d("Migrating room db from schema 4 to schema 5.")
+        Simber.i("Migrating room db from schema 4 to schema 5.", tag = MIGRATION)
         removeSubjectIdColumn(database)
-        Simber.d("Migration from schema 4 to schema 5 done.")
+        Simber.i("Migration from schema 4 to schema 5 done.", tag = MIGRATION)
     }
 
     private fun removeSubjectIdColumn(database: SupportSQLiteDatabase) {
@@ -32,11 +32,14 @@ internal class EventMigration4to5: Migration(4, 5)  {
                 |`mode` TEXT, 
                 |`sessionId` TEXT, 
                 |`deviceId` TEXT, 
-                |PRIMARY KEY(`id`))""".trimMargin())
+                |PRIMARY KEY(`id`))
+            """.trimMargin(),
+        )
 
         // copy existing data into new table
         database.execSQL(
-            "INSERT INTO $TEMP_TABLE_NAME ($COLUMNS) SELECT $COLUMNS FROM $TABLE_NAME")
+            "INSERT INTO $TEMP_TABLE_NAME ($COLUMNS) SELECT $COLUMNS FROM $TABLE_NAME",
+        )
 
         // delete the old table
         database.execSQL("DROP TABLE $TABLE_NAME")
@@ -49,7 +52,5 @@ internal class EventMigration4to5: Migration(4, 5)  {
         private const val TABLE_NAME = "DbEvent"
         private const val COLUMNS = "`id`, `type`, `eventJson`, `createdAt`, `endedAt`, " +
             "`sessionIsClosed`, `projectId`, `attendantId`, `moduleIds`, `mode`, `sessionId`, `deviceId`"
-
     }
-
 }

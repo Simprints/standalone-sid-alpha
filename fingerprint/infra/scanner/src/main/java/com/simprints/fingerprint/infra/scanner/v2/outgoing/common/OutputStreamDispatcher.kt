@@ -1,17 +1,15 @@
 package com.simprints.fingerprint.infra.scanner.v2.outgoing.common
 
 import com.simprints.fingerprint.infra.scanner.v2.outgoing.OutgoingConnectable
-import com.simprints.fingerprint.infra.scanner.v2.tools.reactive.completable
-import io.reactivex.Completable
 import java.io.IOException
 import java.io.OutputStream
+import javax.inject.Inject
 
 /**
  * Class for sending any Iterable<ByteArray>, representing Bluetooth packets, out of the
  * [outputStream]
  */
-class OutputStreamDispatcher : OutgoingConnectable {
-
+class OutputStreamDispatcher @Inject constructor() : OutgoingConnectable {
     private var outputStream: OutputStream? = null
 
     override fun connect(outputStream: OutputStream) {
@@ -26,7 +24,7 @@ class OutputStreamDispatcher : OutgoingConnectable {
      * @throws IOException if stream is broken
      * @throws IllegalStateException if using when not connected
      */
-    fun dispatch(bytes: Iterable<ByteArray>): Completable = completable {
+    fun dispatch(bytes: Iterable<ByteArray>) {
         bytes.forEach { dispatch(it) }
     }
 

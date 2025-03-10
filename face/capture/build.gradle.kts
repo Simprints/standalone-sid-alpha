@@ -21,7 +21,7 @@ dependencies {
     implementation(project(":infra:auth-store"))
     implementation(project(":infra:config-store"))
     implementation(project(":infra:config-sync"))
-    implementation(project(":infra:enrolment-records-store"))
+    implementation(project(":infra:enrolment-records:repository"))
     implementation(project(":infra:events"))
     implementation(project(":infra:images"))
     implementation(project(":infra:resources"))
@@ -29,13 +29,14 @@ dependencies {
     implementation(project(":infra:license"))
     implementation(project(":feature:alert"))
 
-    //BIO SDK
+    // BIO SDK
     implementation(project(":face:infra:bio-sdk-resolver"))
     implementation(project(":face:infra:base-bio-sdk"))
 
     implementation(libs.androidX.cameraX.core)
     implementation(libs.androidX.cameraX.lifecycle)
     implementation(libs.androidX.cameraX.view)
+    implementation(libs.androidX.ui.preference)
     implementation(libs.workManager.work)
 
     implementation(libs.circleImageView)

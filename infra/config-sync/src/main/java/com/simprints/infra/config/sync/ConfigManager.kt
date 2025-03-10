@@ -7,18 +7,19 @@ import com.simprints.infra.config.store.models.PrivacyNoticeResult
 import com.simprints.infra.config.store.models.Project
 import com.simprints.infra.config.store.models.ProjectConfiguration
 import com.simprints.infra.config.store.models.ProjectWithConfig
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
 
 class ConfigManager @Inject constructor(
     private val configRepository: ConfigRepository,
-    private val enrolmentRecordRepository: EnrolmentRecordRepository
+    private val enrolmentRecordRepository: EnrolmentRecordRepository,
+    private val configSyncCache: ConfigSyncCache,
 ) {
-    suspend fun refreshProject(projectId: String): ProjectWithConfig {
-        return configRepository.refreshProject(projectId).also {
-            enrolmentRecordRepository.tokenizeExistingRecords(it.project)
-        }
+    suspend fun refreshProject(projectId: String): ProjectWithConfig = configRepository.refreshProject(projectId).also {
+        enrolmentRecordRepository.tokenizeExistingRecords(it.project)
+        configSyncCache.saveUpdateTime()
     }
 
     suspend fun getProject(projectId: String): Project = try {
@@ -45,20 +46,24 @@ class ConfigManager @Inject constructor(
         }
     }
 
-    suspend fun getDeviceConfiguration(): DeviceConfiguration =
-        configRepository.getDeviceConfiguration()
+    fun watchProjectConfiguration(): Flow<ProjectConfiguration> = configRepository
+        .watchProjectConfiguration()
+        .onStart { getProjectConfiguration() } // to invoke download if empty
+
+    suspend fun getDeviceConfiguration(): DeviceConfiguration = configRepository.getDeviceConfiguration()
 
     suspend fun updateDeviceConfiguration(update: suspend (t: DeviceConfiguration) -> DeviceConfiguration) =
         configRepository.updateDeviceConfiguration(update)
 
-    suspend fun getPrivacyNotice(projectId: String, language: String): Flow<PrivacyNoticeResult> =
-        configRepository.getPrivacyNotice(
-            projectId = projectId,
-            language = language
-        )
+    fun getPrivacyNotice(
+        projectId: String,
+        language: String,
+    ): Flow<PrivacyNoticeResult> = configRepository.getPrivacyNotice(
+        projectId = projectId,
+        language = language,
+    )
 
     suspend fun clearData() = configRepository.clearData()
 
     suspend fun getDeviceState(): DeviceState = configRepository.getDeviceState()
-
 }

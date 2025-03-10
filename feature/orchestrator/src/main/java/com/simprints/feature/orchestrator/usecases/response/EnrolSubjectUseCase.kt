@@ -1,12 +1,13 @@
 package com.simprints.feature.orchestrator.usecases.response
 
 import com.simprints.core.tools.time.TimeHelper
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
-import com.simprints.infra.enrolment.records.store.domain.models.Subject
-import com.simprints.infra.enrolment.records.store.domain.models.SubjectAction
-import com.simprints.infra.events.SessionEventRepository
-import com.simprints.infra.events.event.domain.models.EnrolmentEventV2
-import com.simprints.infra.events.event.domain.models.PersonCreationEvent
+import com.simprints.infra.config.store.models.Project
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.domain.models.Subject
+import com.simprints.infra.enrolment.records.repository.domain.models.SubjectAction
+import com.simprints.infra.events.event.domain.models.BiometricReferenceCreationEvent
+import com.simprints.infra.events.event.domain.models.EnrolmentEventV4
+import com.simprints.infra.events.session.SessionEventRepository
 import javax.inject.Inject
 
 internal class EnrolSubjectUseCase @Inject constructor(
@@ -14,22 +15,26 @@ internal class EnrolSubjectUseCase @Inject constructor(
     private val timeHelper: TimeHelper,
     private val enrolmentRecordRepository: EnrolmentRecordRepository,
 ) {
-
-    suspend operator fun invoke(subject: Subject) {
-        val personCreationEvent = eventRepository.getEventsInCurrentSession()
-            .filterIsInstance<PersonCreationEvent>()
+    suspend operator fun invoke(
+        subject: Subject,
+        project: Project,
+    ) {
+        val biometricReferenceIds = eventRepository
+            .getEventsInCurrentSession()
+            .filterIsInstance<BiometricReferenceCreationEvent>()
             .sortedByDescending { it.payload.createdAt }
-            .first()
+            .map { it.payload.id }
 
-        eventRepository.addOrUpdateEvent(EnrolmentEventV2(
-            timeHelper.now(),
-            subject.subjectId,
-            subject.projectId,
-            subject.moduleId,
-            subject.attendantId,
-            personCreationEvent.id
-        ))
-        enrolmentRecordRepository.performActions(listOf(SubjectAction.Creation(subject)))
+        eventRepository.addOrUpdateEvent(
+            EnrolmentEventV4(
+                timeHelper.now(),
+                subject.subjectId,
+                subject.projectId,
+                subject.moduleId,
+                subject.attendantId,
+                biometricReferenceIds,
+            ),
+        )
+        enrolmentRecordRepository.performActions(listOf(SubjectAction.Creation(subject)), project)
     }
-
 }

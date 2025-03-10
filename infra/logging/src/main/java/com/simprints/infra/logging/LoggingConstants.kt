@@ -1,7 +1,6 @@
 package com.simprints.infra.logging
 
 object LoggingConstants {
-
     /**
      * These keys have been separate into two groups of constants because of legacy reasons.
      * They used to be captured in two separate managers, and in order not to break the backwards
@@ -30,12 +29,11 @@ object LoggingConstants {
     enum class CrashReportTag {
         LOGIN,
         LOGOUT,
-        SCANNER_SETUP,
         SYNC,
         SESSION,
         FINGER_CAPTURE,
         FACE_CAPTURE,
-        MATCHING,
+        FINGER_MATCHING,
         FACE_MATCHING,
         LICENSE,
         SETTINGS,
@@ -43,6 +41,8 @@ object LoggingConstants {
         REALM_DB,
         DB_CORRUPTION,
         ENROLMENT,
+        APP_SCOPE_ERROR,
+        ORCHESTRATION,
+        MIGRATION,
     }
-
 }

@@ -8,13 +8,15 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.simprints.core.livedata.LiveDataEventObserver
 import com.simprints.feature.exitform.ExitFormContract
 import com.simprints.feature.exitform.ExitFormResult
-import com.simprints.feature.exitform.toArgs
 import com.simprints.feature.selectagegroup.R
 import com.simprints.feature.selectagegroup.SelectSubjectAgeGroupResult
 import com.simprints.feature.selectagegroup.databinding.FragmentAgeGroupSelectionBinding
 import com.simprints.infra.config.store.models.AgeGroup
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
+import com.simprints.infra.logging.Simber
 import com.simprints.infra.uibase.navigation.finishWithResult
 import com.simprints.infra.uibase.navigation.handleResult
 import com.simprints.infra.uibase.navigation.navigateSafely
@@ -23,11 +25,15 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 internal class SelectSubjectAgeGroupFragment : Fragment(R.layout.fragment_age_group_selection) {
-
     private val viewModel: SelectSubjectAgeGroupViewModel by viewModels()
     private val binding by viewBinding(FragmentAgeGroupSelectionBinding::bind)
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("SelectSubjectAgeGroupFragment started", tag = ORCHESTRATION)
 
         viewModel.ageGroups.observe(viewLifecycleOwner) { ageGroupsList ->
             fillRecyclerView(ageGroupsList)
@@ -39,13 +45,15 @@ internal class SelectSubjectAgeGroupFragment : Fragment(R.layout.fragment_age_gr
             ExitFormContract.DESTINATION,
         ) { handleExitFormResponse(it) }
 
-        viewModel.showExitForm.observe(viewLifecycleOwner) { exitFormConfig ->
-            exitFormConfig.getContentIfNotHandled()?.let {
+        viewModel.showExitForm.observe(
+            viewLifecycleOwner,
+            LiveDataEventObserver {
                 findNavController().navigateSafely(
-                    this, R.id.action_selectSubjectAgeGroupFragment_to_refusalFragment, it.toArgs()
+                    this,
+                    R.id.action_selectSubjectAgeGroupFragment_to_refusalFragment,
                 )
-            }
-        }
+            },
+        )
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             viewModel.onBackPressed()
         }
@@ -66,7 +74,8 @@ internal class SelectSubjectAgeGroupFragment : Fragment(R.layout.fragment_age_gr
         with(binding.ageGroupRecyclerView) {
             layoutManager = LinearLayoutManager(requireContext())
             val dividerItemDecoration = DividerItemDecoration(
-                this.context, (layoutManager as LinearLayoutManager).orientation
+                this.context,
+                (layoutManager as LinearLayoutManager).orientation,
             )
             this.addItemDecoration(dividerItemDecoration)
             adapter = AgeGroupAdapter(ageGroupsList) { ageGroup ->

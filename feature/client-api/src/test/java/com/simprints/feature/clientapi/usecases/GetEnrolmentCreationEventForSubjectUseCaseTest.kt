@@ -5,7 +5,7 @@ import com.simprints.core.tools.json.JsonHelper
 import com.simprints.core.tools.utils.EncodingUtils
 import com.simprints.infra.config.store.models.UpSynchronizationConfiguration
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
 import com.simprints.testtools.common.coroutines.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -19,7 +19,6 @@ import org.junit.Rule
 import org.junit.Test
 
 class GetEnrolmentCreationEventForSubjectUseCaseTest {
-
     @get:Rule
     val testCoroutineRule = TestCoroutineRule()
 
@@ -47,7 +46,7 @@ class GetEnrolmentCreationEventForSubjectUseCaseTest {
             configManager,
             enrolmentRecordRepository,
             encoder,
-            jsonHelper
+            jsonHelper,
         )
     }
 
@@ -99,7 +98,7 @@ class GetEnrolmentCreationEventForSubjectUseCaseTest {
         val result = useCase("projectId", "subjectId")
 
         coVerify { enrolmentRecordRepository.load(any()) }
-        coVerify { jsonHelper.toJson(any()) }
+        coVerify { jsonHelper.toJson(any(), any()) }
         assertThat(result).isNotNull()
     }
 }

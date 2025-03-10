@@ -6,5 +6,6 @@ import androidx.annotation.Keep
 enum class EnrolmentRecordEventType {
     EnrolmentRecordCreation,
     EnrolmentRecordDeletion,
-    EnrolmentRecordMove;
+    EnrolmentRecordMove,
+    EnrolmentRecordUpdate,
 }

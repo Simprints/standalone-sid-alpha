@@ -4,6 +4,7 @@ import android.database.Cursor
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.simprints.core.tools.extentions.getStringWithColumnName
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 import org.json.JSONArray
 import org.json.JSONObject
@@ -13,20 +14,20 @@ import org.json.JSONObject
  * Changes to the SimNetworkUtils to use an enum instead of
  */
 internal class EventMigration5to6 : Migration(5, 6) {
-
     override fun migrate(database: SupportSQLiteDatabase) {
         try {
-            Simber.d("Migrating room db from schema 5 to schema 6.")
+            Simber.i("Migrating room db from schema 5 to schema 6.", tag = MIGRATION)
             migrateConnectivityEvents(database)
-            Simber.d("Migration from schema 5 to schema 6 done.")
+            Simber.i("Migration from schema 5 to schema 6 done.", tag = MIGRATION)
         } catch (t: Throwable) {
-            Simber.e(t)
+            Simber.e("Failed to migrate room db from schema 5 to schema 6.", t, tag = MIGRATION)
         }
     }
 
     fun migrateConnectivityEvents(database: SupportSQLiteDatabase) {
         val eventsQuery = database.query(
-            "SELECT * FROM DbEvent WHERE type = ?", arrayOf("CONNECTIVITY_SNAPSHOT")
+            "SELECT * FROM DbEvent WHERE type = ?",
+            arrayOf("CONNECTIVITY_SNAPSHOT"),
         )
         eventsQuery.use {
             while (it.moveToNext()) {
@@ -42,7 +43,7 @@ internal class EventMigration5to6 : Migration(5, 6) {
     fun migrateConnectivityEventPayloadType(
         it: Cursor,
         database: SupportSQLiteDatabase,
-        id: String?
+        id: String?,
     ) {
         val jsonData = it.getStringWithColumnName(DB_EVENT_JSON_FIELD)
         jsonData?.let {
@@ -60,14 +61,15 @@ internal class EventMigration5to6 : Migration(5, 6) {
                  */
                 val type = item.getString(CONNECTIONS_TYPE)
                 when {
-                    type.lowercase()
+                    type
+                        .lowercase()
                         .contains(CONNECTIONS_TYPE_VALUE_MOBILE.lowercase()) -> item.put(
                         CONNECTIONS_TYPE,
-                        CONNECTIONS_TYPE_VALUE_MOBILE
+                        CONNECTIONS_TYPE_VALUE_MOBILE,
                     )
                     type.lowercase().contains(CONNECTIONS_TYPE_VALUE_WIFI.lowercase()) -> item.put(
                         CONNECTIONS_TYPE,
-                        CONNECTIONS_TYPE_VALUE_WIFI
+                        CONNECTIONS_TYPE_VALUE_WIFI,
                     )
                     else -> break
                 }
@@ -77,10 +79,11 @@ internal class EventMigration5to6 : Migration(5, 6) {
                  * DISCONNECTED, CONNECTED. We map everything that isn't connected to disconnected.
                  */
                 val state = item.getString(CONNECTIONS_STATE)
-                if (state.equals(CONNECTIONS_STATE_VALUE_CONNECTED))
+                if (state.equals(CONNECTIONS_STATE_VALUE_CONNECTED)) {
                     item.put(CONNECTIONS_STATE, CONNECTIONS_STATE_VALUE_CONNECTED)
-                else
+                } else {
                     item.put(CONNECTIONS_STATE, CONNECTIONS_STATE_VALUE_DISCONNECTED)
+                }
 
                 newConnectionsArray.put(item)
             }
@@ -104,6 +107,4 @@ internal class EventMigration5to6 : Migration(5, 6) {
         private const val CONNECTIONS_STATE_VALUE_CONNECTED = "CONNECTED"
         private const val CONNECTIONS_STATE_VALUE_DISCONNECTED = "DISCONNECTED"
     }
-
-
 }

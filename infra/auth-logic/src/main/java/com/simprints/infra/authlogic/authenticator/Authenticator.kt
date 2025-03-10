@@ -10,10 +10,10 @@ import com.simprints.infra.authlogic.model.NonceScope
 import com.simprints.infra.authlogic.model.toDomainResult
 import com.simprints.infra.authstore.AuthStore
 import com.simprints.infra.authstore.exceptions.AuthRequestInvalidCredentialsException
-import com.simprints.infra.events.SessionEventRepository
 import com.simprints.infra.events.event.domain.models.AuthenticationEvent
 import com.simprints.infra.events.event.domain.models.AuthenticationEvent.AuthenticationPayload.UserInfo
-import com.simprints.infra.logging.LoggingConstants.CrashReportTag
+import com.simprints.infra.events.session.SessionEventRepository
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.LOGIN
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.network.exceptions.BackendMaintenanceException
 import com.simprints.infra.network.exceptions.NetworkConnectionException
@@ -27,7 +27,6 @@ internal class Authenticator @Inject constructor(
     private val projectAuthenticator: ProjectAuthenticator,
     private val eventRepository: SessionEventRepository,
 ) {
-
     private var loginStartTime = timeHelper.now()
 
     suspend fun authenticate(
@@ -37,62 +36,60 @@ internal class Authenticator @Inject constructor(
         deviceId: String,
     ): AuthenticateDataResult {
         val result = try {
-            logMessageForCrashReportWithNetworkTrigger("Making authentication request")
+            log("Making authentication request")
             authStore.cleanCredentials()
 
             loginStartTime = timeHelper.now()
             val nonceScope = NonceScope(projectId, deviceId)
             projectAuthenticator.authenticate(nonceScope, projectSecret)
 
-            logMessageForCrashReportWithNetworkTrigger("Sign in success")
+            log("Sign in success")
             authStore.signedInUserId = userId
 
             AuthenticateDataResult.Authenticated
         } catch (t: Throwable) {
             when (t) {
-                is NetworkConnectionException -> Simber.i(t)
-                else -> Simber.e(t)
+                is NetworkConnectionException -> Simber.i("Authentication failed due to network error", t, tag = LOGIN)
+                else -> Simber.e("Authentication failed due to unknown error", t, tag = LOGIN)
             }
 
             extractResultFromException(t).also { signInResult ->
-                logMessageForCrashReportWithNetworkTrigger("Sign in reason - ${signInResult.javaClass.simpleName}")
+                log("Sign in reason - ${signInResult.javaClass.simpleName}")
             }
         }
 
         return result.also { addEventAndUpdateProjectIdIfRequired(it.toDomainResult(), projectId, userId) }
     }
 
-    private fun extractResultFromException(t: Throwable): AuthenticateDataResult {
-        return when (t) {
-            is IOException -> AuthenticateDataResult.Offline
-            is NetworkConnectionException -> AuthenticateDataResult.Offline
-            is AuthRequestInvalidCredentialsException -> AuthenticateDataResult.BadCredentials
-            is SyncCloudIntegrationException -> AuthenticateDataResult.TechnicalFailure
-            is BackendMaintenanceException -> {
-                AuthenticateDataResult.BackendMaintenanceError(t.estimatedOutage)
-            }
-
-            is RequestingIntegrityTokenException -> AuthenticateDataResult.IntegrityException
-            is MissingOrOutdatedGooglePlayStoreApp -> AuthenticateDataResult.MissingOrOutdatedGooglePlayStoreApp
-            is IntegrityServiceTemporaryDown -> AuthenticateDataResult.IntegrityServiceTemporaryDown
-            else -> AuthenticateDataResult.Unknown
+    private fun extractResultFromException(t: Throwable): AuthenticateDataResult = when (t) {
+        is IOException -> AuthenticateDataResult.Offline
+        is NetworkConnectionException -> AuthenticateDataResult.Offline
+        is AuthRequestInvalidCredentialsException -> AuthenticateDataResult.BadCredentials
+        is SyncCloudIntegrationException -> AuthenticateDataResult.TechnicalFailure
+        is BackendMaintenanceException -> {
+            AuthenticateDataResult.BackendMaintenanceError(t.estimatedOutage)
         }
+
+        is RequestingIntegrityTokenException -> AuthenticateDataResult.IntegrityException
+        is MissingOrOutdatedGooglePlayStoreApp -> AuthenticateDataResult.MissingOrOutdatedGooglePlayStoreApp
+        is IntegrityServiceTemporaryDown -> AuthenticateDataResult.IntegrityServiceTemporaryDown
+        else -> AuthenticateDataResult.Unknown
     }
 
-    private fun logMessageForCrashReportWithNetworkTrigger(message: String) {
-        Simber.tag(CrashReportTag.LOGIN.name).i(message)
+    private fun log(message: String) {
+        Simber.i(message, tag = LOGIN)
     }
 
     private suspend fun addEventAndUpdateProjectIdIfRequired(
         result: AuthenticationEvent.AuthenticationPayload.Result,
         projectId: String,
-        userId: TokenizableString.Raw
+        userId: TokenizableString.Raw,
     ) {
         val event = AuthenticationEvent(
             loginStartTime,
             timeHelper.now(),
             UserInfo(projectId, userId),
-            result
+            result,
         )
         eventRepository.addOrUpdateEvent(event)
     }

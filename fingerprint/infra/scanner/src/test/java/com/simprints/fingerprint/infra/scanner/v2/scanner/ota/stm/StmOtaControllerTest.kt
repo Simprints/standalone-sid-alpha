@@ -6,18 +6,19 @@ import com.simprints.fingerprint.infra.scanner.v2.domain.stmota.StmOtaResponse
 import com.simprints.fingerprint.infra.scanner.v2.domain.stmota.responses.CommandAcknowledgement
 import com.simprints.fingerprint.infra.scanner.v2.exceptions.ota.OtaFailedException
 import com.simprints.fingerprint.infra.scanner.v2.incoming.stmota.StmOtaMessageInputStream
-import com.simprints.fingerprint.infra.scanner.v2.scanner.errorhandler.ResponseErrorHandler
-import com.simprints.fingerprint.infra.scanner.v2.scanner.errorhandler.ResponseErrorHandlingStrategy
-import com.simprints.testtools.common.syntax.awaitAndAssertSuccess
-import com.simprints.testtools.unit.reactive.testSubscribe
+import com.simprints.fingerprint.infra.scanner.v2.outgoing.stmota.StmOtaMessageOutputStream
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.justRun
 import io.mockk.mockk
-import io.mockk.spyk
-import io.mockk.verify
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Completable
-import io.reactivex.subjects.PublishSubject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.ceil
@@ -25,99 +26,100 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 class StmOtaControllerTest {
-
-    private val responseErrorHandler = ResponseErrorHandler(ResponseErrorHandlingStrategy.NONE)
-
     @Test
-    fun program_correctlyEmitsProgressValuesAndCompletes() {
+    fun program_correctlyEmitsProgressValuesAndCompletes() = runTest {
         val stmOtaController = StmOtaController()
 
         val firmwareBin = generateRandomBinFile()
         val expectedProgress = generateExpectedProgressValues(firmwareBin)
 
-        val testObserver = stmOtaController.program(configureMessageStreamMock(), responseErrorHandler, firmwareBin).testSubscribe()
-
-        testObserver.awaitAndAssertSuccess()
-
-        assertThat(testObserver.values()).containsExactlyElementsIn(expectedProgress).inOrder()
-        testObserver.assertComplete()
+        val testObserver =
+            stmOtaController.program(configureMessageStreamMock(), firmwareBin).toList()
+        assertThat(testObserver.toList()).containsExactlyElementsIn(expectedProgress).inOrder()
     }
 
     @Test
-    fun program_correctlyCallsParseAndSendCorrectNumberOfTimes() {
+    fun program_correctlyCallsParseAndSendCorrectNumberOfTimes() = runTest {
         val firmwareBin = generateRandomBinFile()
         val expectedNumberOfCalls = expectedNumberOfChunks(firmwareBin) * 3 + 5
 
         val messageStreamMock = configureMessageStreamMock()
         val stmOtaController = StmOtaController()
-
-        val testObserver = stmOtaController.program(messageStreamMock, responseErrorHandler, firmwareBin).testSubscribe()
-
-        testObserver.awaitAndAssertSuccess()
-
-        verify(exactly = expectedNumberOfCalls) { messageStreamMock.outgoing.sendMessage(any()) }
+        stmOtaController.program(messageStreamMock, firmwareBin).toList()
+        coVerify(exactly = expectedNumberOfCalls) { messageStreamMock.outgoing.sendMessage(any()) }
     }
 
-    @Test
-    fun program_receivesNackAtStart_throwsException() {
+    @Test(expected = OtaFailedException::class)
+    fun program_receivesNackAtStart_throwsException() = runTest {
         val stmOtaController = StmOtaController()
-
-        val testObserver = stmOtaController.program(
-            configureMessageStreamMock(nackPositions = listOf(0)), responseErrorHandler, byteArrayOf()).testSubscribe()
-
-        testObserver.awaitTerminalEvent()
-        testObserver.assertError(OtaFailedException::class.java)
+        stmOtaController
+            .program(
+                configureMessageStreamMock(nackPositions = listOf(0)),
+                byteArrayOf(),
+            ).toList()
     }
 
-    @Test
-    fun program_receivesNackDuringProcess_emitsValueUntilNackThenThrowsException() {
+    @Test(expected = OtaFailedException::class)
+    fun program_receivesNackDuringProcess_emitsValueUntilNackThenThrowsException() = runTest {
         val stmOtaController = StmOtaController()
 
         val firmwareBin = generateRandomBinFile()
         val expectedProgress = generateExpectedProgressValues(firmwareBin)
 
-        val testObserver = stmOtaController.program(
-            configureMessageStreamMock(nackPositions = listOf(10)), responseErrorHandler, firmwareBin).testSubscribe()
-
-        testObserver.awaitTerminalEvent()
-        assertThat(testObserver.values()).containsExactlyElementsIn(expectedProgress.slice(0..1)).inOrder()
-        testObserver.assertError(OtaFailedException::class.java)
+        val testObserver = stmOtaController
+            .program(
+                configureMessageStreamMock(nackPositions = listOf(10)),
+                firmwareBin,
+            ).toList()
+        assertThat(testObserver.toList())
+            .containsExactlyElementsIn(expectedProgress.slice(0..1))
+            .inOrder()
     }
 
-    private fun configureMessageStreamMock(nackPositions: List<Int> = listOf()): StmOtaMessageChannel {
-        val responseSubject = PublishSubject.create<StmOtaResponse>()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun TestScope.configureMessageStreamMock(nackPositions: List<Int> = listOf()): StmOtaMessageChannel {
         val messageIndex = AtomicInteger(0)
-
-        return StmOtaMessageChannel(
-            spyk(StmOtaMessageInputStream(mockk())).apply {
-                justRun { connect(any()) }
-                every { stmOtaResponseStream } returns responseSubject.toFlowable(BackpressureStrategy.BUFFER)
-            },
-            mockk {
-                every { sendMessage(any()) } answers {
-                    Completable.complete().doAfterTerminate {
-                        responseSubject.onNext(CommandAcknowledgement(
-                            if (nackPositions.contains(messageIndex.getAndIncrement())) {
-                                CommandAcknowledgement.Kind.NACK
-                            } else {
-                                CommandAcknowledgement.Kind.ACK
-                            }
-                        ))
-                    }
+        var readyToRead = false
+        var response: StmOtaResponse = CommandAcknowledgement(CommandAcknowledgement.Kind.ACK)
+        val incoming = mockk<StmOtaMessageInputStream> {
+            justRun { connect(any()) }
+            every { stmOtaResponseStream } answers {
+                while (!readyToRead) {
+                    advanceTimeBy(SMALL_DELAY)
                 }
+                readyToRead = false
+                flowOf(response)
             }
+        }
+        val outgoing = mockk<StmOtaMessageOutputStream> {
+            coEvery { sendMessage(any()) } answers {
+                response = CommandAcknowledgement(
+                    if (nackPositions.contains(messageIndex.getAndIncrement())) {
+                        CommandAcknowledgement.Kind.NACK
+                    } else {
+                        CommandAcknowledgement.Kind.ACK
+                    },
+                )
+                readyToRead = true
+            }
+        }
+        return StmOtaMessageChannel(
+            incoming,
+            outgoing,
+            Dispatchers.IO,
         )
     }
 
     companion object {
         private fun generateRandomBinFile() = Random.nextBytes(1200 + Random.nextInt(2000))
 
-        private fun expectedNumberOfChunks(binFile: ByteArray): Int =
-            ceil(binFile.size.toFloat() / 256f).roundToInt()
+        private fun expectedNumberOfChunks(binFile: ByteArray): Int = ceil(binFile.size.toFloat() / 256f).roundToInt()
 
         private fun generateExpectedProgressValues(binFile: ByteArray): List<Float> {
             val numberOfChunks = expectedNumberOfChunks(binFile)
             return (1..numberOfChunks).map { it.toFloat() / numberOfChunks.toFloat() }
         }
+
+        private const val SMALL_DELAY = 1L
     }
 }

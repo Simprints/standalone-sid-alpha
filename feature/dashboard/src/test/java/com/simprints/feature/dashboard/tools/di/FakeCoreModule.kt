@@ -6,7 +6,9 @@ import com.simprints.core.DeviceID
 import com.simprints.core.DispatcherBG
 import com.simprints.core.DispatcherIO
 import com.simprints.core.ExternalScope
+import com.simprints.core.NonCancellableIO
 import com.simprints.core.PackageVersionName
+import com.simprints.core.SessionCoroutineScope
 import com.simprints.core.tools.json.JsonHelper
 import com.simprints.core.tools.time.TimeHelper
 import com.simprints.core.tools.utils.EncodingUtils
@@ -23,15 +25,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.StandardTestDispatcher
 import javax.inject.Singleton
+import kotlin.coroutines.CoroutineContext
 
 @Module
 @TestInstallIn(
     components = [SingletonComponent::class],
-    replaces = [CoreModule::class]
+    replaces = [CoreModule::class],
 )
 object FakeCoreModule {
-
-
     const val DEVICE_ID = "deviceId"
     const val PACKAGE_VERSION_NAME = "version"
 
@@ -59,9 +60,17 @@ object FakeCoreModule {
     @Provides
     fun provideCoroutineDispatcherBg(): CoroutineDispatcher = StandardTestDispatcher()
 
+    @NonCancellableIO
+    @Provides
+    fun provideNonCancellableIO(): CoroutineContext = StandardTestDispatcher()
+
     @ExternalScope
     @Provides
     fun provideExternalScope(): CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
+
+    @SessionCoroutineScope
+    @Provides
+    fun provideSessionCoroutineScope(): CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
     @AppScope
     @Provides
@@ -74,5 +83,4 @@ object FakeCoreModule {
     @Provides
     @Singleton
     fun provideEncodingUtils(): EncodingUtils = EncodingUtilsImplForTests
-
 }

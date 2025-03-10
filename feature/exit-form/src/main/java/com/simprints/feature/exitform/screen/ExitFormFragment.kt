@@ -9,23 +9,21 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
+import com.simprints.feature.exitform.ExitFormOption
 import com.simprints.feature.exitform.ExitFormResult
 import com.simprints.feature.exitform.R
-import com.simprints.feature.exitform.config.ExitFormOption
 import com.simprints.feature.exitform.databinding.FragmentExitFormBinding
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
+import com.simprints.infra.logging.Simber
 import com.simprints.infra.uibase.extensions.showToast
 import com.simprints.infra.uibase.listeners.TextWatcherOnChangeListener
 import com.simprints.infra.uibase.navigation.finishWithResult
-import com.simprints.infra.uibase.view.setTextWithFallbacks
 import com.simprints.infra.uibase.viewbinding.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import com.simprints.infra.resources.R as IDR
 
 @AndroidEntryPoint
 internal class ExitFormFragment : Fragment(R.layout.fragment_exit_form) {
-
-    private val args by navArgs<ExitFormFragmentArgs>()
     private val viewModel by viewModels<ExitFormViewModel>()
     private val binding by viewBinding(FragmentExitFormBinding::bind)
 
@@ -33,22 +31,18 @@ internal class ExitFormFragment : Fragment(R.layout.fragment_exit_form) {
         viewModel.reasonTextChanged(it)
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
-        val config = args.exitFormConfiguration
+        Simber.i("ExitFormFragment started", tag = ORCHESTRATION)
 
-        binding.exitFormTitle.setTextWithFallbacks(
-            rawText = config.title,
-            textFallback = config.titleRes,
-            default = IDR.string.exit_form_title_biometrics,
-        )
-        binding.exitFormGoBack.setTextWithFallbacks(
-            rawText = config.backButton,
-            textFallback = config.backButtonRes,
-            default = IDR.string.exit_form_continue_default_button,
-        )
+        binding.exitFormTitle.setText(IDR.string.exit_form_title)
+        binding.exitFormGoBack.setText(IDR.string.exit_form_continue_button)
 
-        setOptionsVisible(config.visibleOptions)
+        viewModel.start()
+
         handleClicks()
         observeViewModel()
     }
@@ -99,6 +93,9 @@ internal class ExitFormFragment : Fragment(R.layout.fragment_exit_form) {
     }
 
     private fun observeViewModel() {
+        viewModel.visibleOptions.observe(viewLifecycleOwner) {
+            setOptionsVisible(it)
+        }
         viewModel.requestReasonEvent.observe(viewLifecycleOwner) {
             setFocusOnExitReasonAndDisableSubmit()
         }
@@ -113,8 +110,9 @@ internal class ExitFormFragment : Fragment(R.layout.fragment_exit_form) {
         }
         viewModel.finishEvent.observe(viewLifecycleOwner) {
             val (answer, reason) = it.peekContent()
-            findNavController().finishWithResult(this,
-                ExitFormResult(true, answer, reason)
+            findNavController().finishWithResult(
+                this,
+                ExitFormResult(true, answer, reason),
             )
         }
     }
@@ -128,5 +126,4 @@ internal class ExitFormFragment : Fragment(R.layout.fragment_exit_form) {
 
         inputManager.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
     }
-
 }

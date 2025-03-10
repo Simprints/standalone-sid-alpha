@@ -9,8 +9,10 @@ import com.simprints.core.tools.time.TimeHelper
 import com.simprints.core.tools.time.Timestamp
 import com.simprints.face.capture.R
 import com.simprints.face.capture.databinding.FragmentConfirmationBinding
-import com.simprints.infra.uibase.viewbinding.viewBinding
 import com.simprints.face.capture.screens.FaceCaptureViewModel
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
+import com.simprints.infra.logging.Simber
+import com.simprints.infra.uibase.viewbinding.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -20,7 +22,6 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 internal class ConfirmationFragment : Fragment(R.layout.fragment_confirmation) {
-
     private val binding by viewBinding(FragmentConfirmationBinding::bind)
 
     private val mainVm: FaceCaptureViewModel by activityViewModels()
@@ -30,9 +31,13 @@ internal class ConfirmationFragment : Fragment(R.layout.fragment_confirmation) {
 
     private var startTime = Timestamp(0L)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        startTime = faceTimeHelper.now()
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("ConfirmationFragment started", tag = ORCHESTRATION)
+        startTime = faceTimeHelper.now()
 
         binding.apply(::setImageBitmapAndButtonClickListener)
 
@@ -46,6 +51,7 @@ internal class ConfirmationFragment : Fragment(R.layout.fragment_confirmation) {
         mainVm.getSampleDetection()?.bitmap?.let { binding.confirmationImg.setImageBitmap(it) }
 
         binding.confirmationBtn.setOnClickListener {
+            binding.confirmationBtn.setOnClickListener(null)
             mainVm.addCaptureConfirmationAction(startTime, true)
             mainVm.flowFinished()
         }

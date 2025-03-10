@@ -5,11 +5,11 @@ import com.simprints.fingerprint.infra.scanner.ScannerManager
 import com.simprints.infra.authstore.AuthStore
 import com.simprints.infra.authstore.domain.models.Token
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
 import com.simprints.infra.events.EventRepository
 import com.simprints.infra.images.ImageRepository
 import com.simprints.infra.license.LicenseRepository
-import com.simprints.infra.logging.LoggingConstants
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.LOGOUT
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.network.SimNetwork
 import com.simprints.infra.recent.user.activity.RecentUserActivityManager
@@ -29,11 +29,13 @@ internal class SignerManager @Inject constructor(
     private val scannerManager: ScannerManager,
     @DispatcherIO private val dispatcher: CoroutineDispatcher,
 ) {
-
     val signedInProjectId: String
         get() = authStore.signedInProjectId
 
-    suspend fun signIn(projectId: String, token: Token) = withContext(dispatcher) {
+    suspend fun signIn(
+        projectId: String,
+        token: Token,
+    ) = withContext(dispatcher) {
         try {
             // Store Firebase token so it can be used by ConfigManager
             authStore.storeFirebaseToken(token)
@@ -52,7 +54,6 @@ internal class SignerManager @Inject constructor(
     }
 
     suspend fun signOut() = withContext(dispatcher) {
-
         simNetwork.resetApiBaseUrl()
         configManager.clearData()
         recentUserActivityManager.clearRecentActivity()
@@ -66,7 +67,6 @@ internal class SignerManager @Inject constructor(
         authStore.cleanCredentials()
         authStore.clearFirebaseToken()
 
-        Simber.tag(LoggingConstants.CrashReportTag.LOGOUT.name).i("Signed out")
+        Simber.i("Signed out", tag = LOGOUT)
     }
-
 }

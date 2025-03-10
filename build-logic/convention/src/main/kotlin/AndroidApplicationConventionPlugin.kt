@@ -11,7 +11,6 @@ import org.gradle.kotlin.dsl.withGroovyBuilder
 import org.jetbrains.kotlin.konan.file.File
 
 class AndroidApplicationConventionPlugin : Plugin<Project> {
-
     override fun apply(target: Project) {
         with(target) {
             apply(from = "${rootDir}${File.separator}build-logic${File.separator}build_properties.gradle.kts")
@@ -19,6 +18,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             val propVersionCode = props["VERSION_CODE"] as Int
             val propVersionName = props["VERSION_NAME"] as String
             val propVersionSuffix = props["VERSION_SUFFIX"] as String
+            val propVersionBuild = props["VERSION_BUILD"] as String
             val propDebuggable = props["DEBUGGABLE"] as Boolean
 
             with(pluginManager) {
@@ -74,29 +74,29 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                 }
 
                 buildTypes {
-                    getByName(BuildTypes.release) {
+                    getByName(BuildTypes.RELEASE) {
                         isMinifyEnabled = true
                         isShrinkResources = true
                         isDebuggable = false
                         lint.fatal += "StopShip"
-                        versionNameSuffix = "+$propVersionCode"
+                        versionNameSuffix = "+$propVersionBuild"
                         buildConfigField("Boolean", "DEBUG_MODE", "false")
                     }
 
-                    create(BuildTypes.staging) {
+                    create(BuildTypes.STAGING) {
                         isMinifyEnabled = true
                         isShrinkResources = true
                         isDebuggable = propDebuggable
                         lint.fatal += "StopShip"
-                        versionNameSuffix = "-$propVersionSuffix+$propVersionCode"
+                        versionNameSuffix = "+$propVersionSuffix.$propVersionBuild"
                         buildConfigField("Boolean", "DEBUG_MODE", "true")
                     }
 
-                    getByName(BuildTypes.debug) {
+                    getByName(BuildTypes.DEBUG) {
                         isMinifyEnabled = false
                         isShrinkResources = false
                         isDebuggable = propDebuggable
-                        versionNameSuffix = "-$propVersionSuffix+$propVersionCode"
+                        versionNameSuffix = "+$propVersionSuffix.$propVersionBuild"
                         buildConfigField("Boolean", "DEBUG_MODE", "true")
 
                         withGroovyBuilder {

@@ -1,12 +1,15 @@
 package com.simprints.feature.clientapi.mappers.request
 
 import com.google.common.truth.Truth.assertThat
+import com.simprints.core.tools.time.TimeHelper
+import com.simprints.core.tools.time.Timestamp
 import com.simprints.feature.clientapi.exceptions.InvalidRequestException
+import com.simprints.feature.clientapi.models.ClientApiConstants
 import com.simprints.feature.clientapi.usecases.GetCurrentSessionIdUseCase
-import com.simprints.feature.clientapi.usecases.IsCurrentSessionAnIdentificationOrEnrolmentUseCase
 import com.simprints.feature.clientapi.usecases.SessionHasIdentificationCallbackUseCase
 import com.simprints.infra.config.store.tokenization.TokenizationProcessor
 import com.simprints.infra.orchestration.data.ActionRequest
+import com.simprints.libsimprints.Constants.SIMPRINTS_LIB_VERSION
 import com.simprints.libsimprints.Constants.SIMPRINTS_MODULE_ID
 import com.simprints.libsimprints.Constants.SIMPRINTS_PROJECT_ID
 import com.simprints.libsimprints.Constants.SIMPRINTS_SELECTED_GUID
@@ -17,6 +20,7 @@ import com.simprints.testtools.common.coroutines.TestCoroutineRule
 import com.simprints.testtools.common.syntax.assertThrows
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -24,9 +28,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.any
 
-
 class IntentToActionMapperTest {
-
     @get:Rule
     val coroutinesTestRule = TestCoroutineRule()
 
@@ -34,13 +36,13 @@ class IntentToActionMapperTest {
     private lateinit var getCurrentSessionIdUseCase: GetCurrentSessionIdUseCase
 
     @MockK
-    private lateinit var isCurrentSessionAnIdentificationOrEnrolment: IsCurrentSessionAnIdentificationOrEnrolmentUseCase
-
-    @MockK
     private lateinit var sessionHasIdentificationCallback: SessionHasIdentificationCallbackUseCase
 
     @MockK
     private lateinit var tokenizationProcessor: TokenizationProcessor
+
+    @MockK
+    private lateinit var timeHelper: TimeHelper
 
     private lateinit var mapper: IntentToActionMapper
 
@@ -50,13 +52,13 @@ class IntentToActionMapperTest {
 
         coEvery { getCurrentSessionIdUseCase.invoke() } returns SESSION_ID
         coEvery { sessionHasIdentificationCallback.invoke(any()) } returns true
-        coEvery { isCurrentSessionAnIdentificationOrEnrolment.invoke() } returns true
+        every { timeHelper.now() } returns Timestamp(0L)
 
         mapper = IntentToActionMapper(
             getCurrentSessionIdUseCase,
-            isCurrentSessionAnIdentificationOrEnrolment,
             sessionHasIdentificationCallback,
-            tokenizationProcessor
+            tokenizationProcessor,
+            timeHelper,
         )
     }
 
@@ -154,6 +156,25 @@ class IntentToActionMapperTest {
         }
     }
 
+    @Test
+    fun `handles empty meta info extra`() = runTest {
+        val extras = mapOf(
+            SIMPRINTS_PROJECT_ID to "projectId-1111111111",
+            SIMPRINTS_USER_ID to "userId",
+            SIMPRINTS_MODULE_ID to "moduleId",
+        )
+
+        val action = mapper("com.simprints.id.REGISTER", extras, any())
+        assertThat(action.actionIdentifier.callerPackageName).isEmpty()
+        assertThat(action.actionIdentifier.contractVersion).isEqualTo(1)
+    }
+
+    @Test
+    fun `correctly parses meta info extra`() = runTest {
+        val action = mapper("com.simprints.id.REGISTER", defaultExtras, any())
+        assertThat(action.actionIdentifier.callerPackageName).isNotEmpty()
+        assertThat(action.actionIdentifier.contractVersion).isGreaterThan(1)
+    }
 
     companion object {
         private const val SESSION_ID = "1d3a92c1-3410-40fb-9e88-4570c9abd150"
@@ -165,6 +186,8 @@ class IntentToActionMapperTest {
             SIMPRINTS_SESSION_ID to SESSION_ID,
             SIMPRINTS_SELECTED_GUID to SESSION_ID,
             SIMPRINTS_VERIFY_GUID to SESSION_ID,
+            ClientApiConstants.CALLER_PACKAGE_NAME to "com.package.name",
+            SIMPRINTS_LIB_VERSION to 5,
         )
 
         private val noSessionExtras = mapOf(
@@ -185,4 +208,3 @@ class IntentToActionMapperTest {
         )
     }
 }
-

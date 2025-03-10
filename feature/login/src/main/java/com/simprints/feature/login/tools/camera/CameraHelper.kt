@@ -10,19 +10,19 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.simprints.core.ExcludedFromGeneratedTestCoverageReports
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.LOGIN
 import com.simprints.infra.logging.Simber
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.Executors
 import javax.inject.Inject
 
 @ExcludedFromGeneratedTestCoverageReports(
-    reason = "This is an injectable wrapper around cameraX and ML kit APIs. There is no business logic."
+    reason = "This is an injectable wrapper around cameraX and ML kit APIs. There is no business logic.",
 )
 internal class CameraHelper @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraFocusManager: CameraFocusManager,
 ) {
-
     fun startCamera(
         lifecycleOwner: LifecycleOwner,
         cameraPreview: PreviewView,
@@ -43,35 +43,39 @@ internal class CameraHelper @Inject constructor(
                 val preview = buildPreview(cameraPreview)
 
                 try {
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner, cameraSelector, analyzer, preview
-                    ).let {
-                        with(cameraFocusManager) {
-                            setUpFocusOnTap(cameraPreview, it)
-                            setUpAutoFocus(cameraPreview, it)
+                    cameraProvider
+                        .bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            analyzer,
+                            preview,
+                        ).let {
+                            with(cameraFocusManager) {
+                                setUpFocusOnTap(cameraPreview, it)
+                                setUpAutoFocus(cameraPreview, it)
+                            }
                         }
-                    }
                 } catch (e: Exception) {
-                    // Can be thrown if the camera is already in use by another process
-                    Simber.i(e)
+                    Simber.i("Camera is already in use by another process", e, tag = LOGIN)
                     initializationErrorListener.onCameraError()
                 }
             },
-            ContextCompat.getMainExecutor(context)
+            ContextCompat.getMainExecutor(context),
         )
     }
 
-    private fun buildAnalyser(qrAnalyser: QrCodeAnalyzer) = ImageAnalysis.Builder()
+    private fun buildAnalyser(qrAnalyser: QrCodeAnalyzer) = ImageAnalysis
+        .Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .setTargetAspectRatio(AspectRatio.RATIO_16_9)
         .build()
         .apply { setAnalyzer(Executors.newSingleThreadExecutor(), qrAnalyser) }
 
-    private fun buildPreview(previewView: PreviewView): Preview = Preview.Builder()
+    private fun buildPreview(previewView: PreviewView): Preview = Preview
+        .Builder()
         .setTargetAspectRatio(AspectRatio.RATIO_16_9)
         .build()
         .apply { setSurfaceProvider(previewView.surfaceProvider) }
-
 }
 
 fun interface CameraInitializationErrorListener {

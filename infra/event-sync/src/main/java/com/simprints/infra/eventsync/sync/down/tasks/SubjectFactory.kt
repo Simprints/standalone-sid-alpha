@@ -7,10 +7,11 @@ import com.simprints.core.tools.time.TimeHelper
 import com.simprints.core.tools.utils.EncodingUtils
 import com.simprints.face.capture.FaceCaptureResult
 import com.simprints.fingerprint.capture.FingerprintCaptureResult
-import com.simprints.infra.enrolment.records.store.domain.models.Subject
+import com.simprints.infra.enrolment.records.repository.domain.models.Subject
 import com.simprints.infra.events.event.domain.models.subject.BiometricReference
 import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordCreationEvent.EnrolmentRecordCreationPayload
 import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordMoveEvent.EnrolmentRecordCreationInMove
+import com.simprints.infra.events.event.domain.models.subject.EnrolmentRecordUpdateEvent.EnrolmentRecordUpdatePayload
 import com.simprints.infra.events.event.domain.models.subject.FaceReference
 import com.simprints.infra.events.event.domain.models.subject.FaceTemplate
 import com.simprints.infra.events.event.domain.models.subject.FingerprintReference
@@ -23,30 +24,45 @@ class SubjectFactory @Inject constructor(
     private val encodingUtils: EncodingUtils,
     private val timeHelper: TimeHelper,
 ) {
+    fun buildSubjectFromCreationPayload(payload: EnrolmentRecordCreationPayload) = with(payload) {
+        buildSubject(
+            subjectId = subjectId,
+            projectId = projectId,
+            attendantId = attendantId,
+            moduleId = moduleId,
+            fingerprintSamples = extractFingerprintSamplesFromBiometricReferences(this.biometricReferences),
+            faceSamples = extractFaceSamplesFromBiometricReferences(this.biometricReferences),
+        )
+    }
 
-    fun buildSubjectFromCreationPayload(payload: EnrolmentRecordCreationPayload) =
-        with(payload) {
-            buildSubject(
-                subjectId = subjectId,
-                projectId = projectId,
-                attendantId = attendantId,
-                moduleId = moduleId,
-                fingerprintSamples = extractFingerprintSamplesFromBiometricReferences(this.biometricReferences),
-                faceSamples = extractFaceSamplesFromBiometricReferences(this.biometricReferences)
-            )
-        }
+    fun buildSubjectFromMovePayload(payload: EnrolmentRecordCreationInMove) = with(payload) {
+        buildSubject(
+            subjectId = subjectId,
+            projectId = projectId,
+            attendantId = attendantId,
+            moduleId = moduleId,
+            fingerprintSamples = extractFingerprintSamplesFromBiometricReferences(this.biometricReferences),
+            faceSamples = extractFaceSamplesFromBiometricReferences(this.biometricReferences),
+        )
+    }
 
-    fun buildSubjectFromMovePayload(payload: EnrolmentRecordCreationInMove) =
-        with(payload) {
-            buildSubject(
-                subjectId = subjectId,
-                projectId = projectId,
-                attendantId = attendantId,
-                moduleId = moduleId,
-                fingerprintSamples = extractFingerprintSamplesFromBiometricReferences(this.biometricReferences),
-                faceSamples = extractFaceSamplesFromBiometricReferences(this.biometricReferences)
-            )
-        }
+    fun buildSubjectFromUpdatePayload(
+        existingSubject: Subject,
+        payload: EnrolmentRecordUpdatePayload,
+    ): Subject {
+        val removedBiometricReferences = payload.biometricReferencesRemoved.toSet() // to make lookup O(1)
+        val addedFaceSamples = extractFaceSamplesFromBiometricReferences(payload.biometricReferencesAdded)
+        val addedFingerprintSamples = extractFingerprintSamplesFromBiometricReferences(payload.biometricReferencesAdded)
+
+        return existingSubject.copy(
+            faceSamples = existingSubject.faceSamples
+                .filterNot { it.referenceId in removedBiometricReferences }
+                .plus(addedFaceSamples),
+            fingerprintSamples = existingSubject.fingerprintSamples
+                .filterNot { it.referenceId in removedBiometricReferences }
+                .plus(addedFingerprintSamples),
+        )
+    }
 
     fun buildSubjectFromCaptureResults(
         projectId: String,
@@ -75,7 +91,7 @@ class SubjectFactory @Inject constructor(
         createdAt: Date? = null,
         updatedAt: Date? = null,
         fingerprintSamples: List<FingerprintSample> = emptyList(),
-        faceSamples: List<FaceSample> = emptyList()
+        faceSamples: List<FaceSample> = emptyList(),
     ) = Subject(
         subjectId = subjectId,
         projectId = projectId,
@@ -84,57 +100,57 @@ class SubjectFactory @Inject constructor(
         createdAt = createdAt,
         updatedAt = updatedAt,
         fingerprintSamples = fingerprintSamples,
-        faceSamples = faceSamples
+        faceSamples = faceSamples,
     )
 
-    private fun extractFingerprintSamples(
-        fingerprintResponse: FingerprintCaptureResult
-    ) = fingerprintResponse.results.mapNotNull { captureResult ->
-        captureResult.sample?.let { sample ->
-            FingerprintSample(
-                captureResult.identifier,
-                sample.template,
-                sample.templateQualityScore,
-                sample.format
-            )
+    private fun extractFingerprintSamples(fingerprintResponse: FingerprintCaptureResult) =
+        fingerprintResponse.results.mapNotNull { captureResult ->
+            captureResult.sample?.let { sample ->
+                FingerprintSample(
+                    captureResult.identifier,
+                    sample.template,
+                    sample.templateQualityScore,
+                    sample.format,
+                    fingerprintResponse.referenceId,
+                )
+            }
         }
-    }
 
     private fun extractFaceSamples(faceResponse: FaceCaptureResult) = faceResponse.results
         .mapNotNull { it.sample }
-        .map { FaceSample(it.template, it.format) }
+        .map { FaceSample(it.template, it.format, faceResponse.referenceId) }
 
-    private fun extractFingerprintSamplesFromBiometricReferences(biometricReferences: List<BiometricReference>?) =
-        biometricReferences?.filterIsInstance<FingerprintReference>()
-            ?.firstOrNull()
-            ?.let { reference ->
-                reference.templates.map {
-                    buildFingerprintSample(
-                        it,
-                        reference.format
-                    )
-                }
-            }
-            ?: emptyList()
+    fun extractFingerprintSamplesFromBiometricReferences(biometricReferences: List<BiometricReference>?) = biometricReferences
+        ?.filterIsInstance<FingerprintReference>()
+        ?.map { reference -> reference.templates.map { buildFingerprintSample(it, reference.format, reference.id) } }
+        ?.flatten()
+        ?: emptyList()
 
     private fun buildFingerprintSample(
         template: FingerprintTemplate,
-        format: String
-    ): FingerprintSample {
-        return FingerprintSample(
-            fingerIdentifier = template.finger,
-            template = encodingUtils.base64ToBytes(template.template),
-            templateQualityScore = template.quality,
-            format = format
-        )
-    }
+        format: String,
+        referenceId: String,
+    ): FingerprintSample = FingerprintSample(
+        fingerIdentifier = template.finger,
+        template = encodingUtils.base64ToBytes(template.template),
+        templateQualityScore = template.quality,
+        format = format,
+        referenceId = referenceId,
+    )
 
-    private fun extractFaceSamplesFromBiometricReferences(biometricReferences: List<BiometricReference>?) =
-        biometricReferences?.filterIsInstance<FaceReference>()
-            ?.firstOrNull()
-            ?.let { reference -> reference.templates.map { buildFaceSample(it, reference.format) } }
-            ?: emptyList()
+    fun extractFaceSamplesFromBiometricReferences(biometricReferences: List<BiometricReference>?) = biometricReferences
+        ?.filterIsInstance<FaceReference>()
+        ?.map { reference -> reference.templates.map { buildFaceSample(it, reference.format, reference.id) } }
+        ?.flatten()
+        ?: emptyList()
 
-    private fun buildFaceSample(template: FaceTemplate, format: String) =
-        FaceSample(encodingUtils.base64ToBytes(template.template), format)
+    private fun buildFaceSample(
+        template: FaceTemplate,
+        format: String,
+        referenceId: String,
+    ) = FaceSample(
+        template = encodingUtils.base64ToBytes(template.template),
+        format = format,
+        referenceId = referenceId,
+    )
 }

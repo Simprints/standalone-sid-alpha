@@ -9,6 +9,7 @@ import com.simprints.infra.authstore.AuthStore
 import com.simprints.infra.config.store.local.migrations.models.OldProjectConfig
 import com.simprints.infra.config.store.local.models.ProtoProjectConfiguration
 import com.simprints.infra.config.store.local.models.toProto
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.MIGRATION
 import com.simprints.infra.logging.Simber
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -20,7 +21,6 @@ internal class ProjectConfigSharedPrefsMigration @Inject constructor(
     @ApplicationContext ctx: Context,
     private val authStore: AuthStore,
 ) : DataMigration<ProtoProjectConfiguration> {
-
     private val prefs = ctx.getSharedPreferences(PREF_FILE_NAME, PREF_MODE)
 
     override suspend fun cleanUp() {
@@ -28,33 +28,35 @@ internal class ProjectConfigSharedPrefsMigration @Inject constructor(
         ALL_KEYS.forEach { editor.remove(it) }
         editor.remove(PROJECT_SETTINGS_JSON_STRING_KEY)
         editor.apply()
-        Simber.i("Migration of project configuration to Datastore done")
+        Simber.i("Migration of project configuration to Datastore done", tag = MIGRATION)
     }
 
     override suspend fun migrate(currentData: ProtoProjectConfiguration): ProtoProjectConfiguration {
-        Simber.i("Start migration of project configuration to Datastore")
+        Simber.i("Start migration of project configuration to Datastore", tag = MIGRATION)
         val projectSettingsJson = prefs.getString(PROJECT_SETTINGS_JSON_STRING_KEY, "")
         if (projectSettingsJson.isNullOrEmpty()) return currentData
 
         return try {
-            JsonHelper.fromJson<OldProjectConfig>(projectSettingsJson)
+            JsonHelper
+                .fromJson<OldProjectConfig>(projectSettingsJson)
                 .toDomain(authStore.signedInProjectId)
                 .toProto()
         } catch (e: Exception) {
             if (e is JacksonException) {
                 // Return default value
-                Simber.i(e, "Invalid old configuration for project ${authStore.signedInProjectId}")
+                Simber.i("Invalid old configuration for project ${authStore.signedInProjectId}", e, tag = MIGRATION)
                 ProtoProjectConfiguration.getDefaultInstance()
             } else {
-                Simber.e(e)
+                Simber.e("Failed to migrate project configuration to Datastore", e, tag = MIGRATION)
                 throw e
             }
         }
     }
 
-    override suspend fun shouldMigrate(currentData: ProtoProjectConfiguration): Boolean =
-        prefs.getString(PROJECT_SETTINGS_JSON_STRING_KEY, "")
-            ?.isNotEmpty() == true && currentData.projectId.isEmpty()
+    override suspend fun shouldMigrate(currentData: ProtoProjectConfiguration): Boolean = prefs
+        .getString(PROJECT_SETTINGS_JSON_STRING_KEY, "")
+        ?.isNotEmpty() == true &&
+        currentData.projectId.isEmpty()
 
     companion object {
         @VisibleForTesting

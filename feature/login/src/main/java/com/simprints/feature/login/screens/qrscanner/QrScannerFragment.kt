@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.firebase.analytics.FirebaseAnalytics.Event.LOGIN
 import com.simprints.core.tools.extentions.hasPermission
 import com.simprints.feature.login.R
 import com.simprints.feature.login.databinding.FragmentQrScannerBinding
@@ -26,7 +27,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 internal class QrScannerFragment : Fragment(R.layout.fragment_qr_scanner) {
-
     private val binding by viewBinding(FragmentQrScannerBinding::bind)
 
     @Inject
@@ -45,17 +45,19 @@ internal class QrScannerFragment : Fragment(R.layout.fragment_qr_scanner) {
         }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 qrCodeAnalyzer.scannedCode
                     .catch { e ->
-                        Simber.e(e)
+                        Simber.e("Camera not available for QR scanning", e, tag = LOGIN)
                         finishWithError(QrScannerResult.QrScannerError.CameraNotAvailable)
-                    }
-                    .collectLatest { qrCode ->
+                    }.collectLatest { qrCode ->
                         if (qrCode.isNotEmpty()) {
                             finishWithContent(qrCode)
                         }
@@ -75,7 +77,7 @@ internal class QrScannerFragment : Fragment(R.layout.fragment_qr_scanner) {
         cameraHelper.startCamera(
             viewLifecycleOwner,
             binding.qrScannerPreview,
-            qrCodeAnalyzer
+            qrCodeAnalyzer,
         ) {
             finishWithError(QrScannerResult.QrScannerError.CameraNotAvailable)
         }

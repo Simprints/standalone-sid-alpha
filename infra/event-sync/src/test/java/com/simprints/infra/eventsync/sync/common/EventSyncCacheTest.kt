@@ -2,6 +2,7 @@ package com.simprints.infra.eventsync.sync.common
 
 import android.content.SharedPreferences
 import com.google.common.truth.Truth.assertThat
+import com.simprints.core.tools.time.Timestamp
 import com.simprints.infra.eventsync.sync.common.EventSyncCache.Companion.PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY
 import com.simprints.infra.security.SecurityManager
 import com.simprints.testtools.common.coroutines.TestCoroutineRule
@@ -14,12 +15,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.util.Date
 
 class EventSyncCacheTest {
-
     companion object {
-
         private const val WORK_ID = "workID"
     }
 
@@ -44,9 +42,12 @@ class EventSyncCacheTest {
     fun setUp() {
         MockKAnnotations.init(this, relaxed = true)
 
-        every { securityManager.buildEncryptedSharedPreferences(EventSyncCache.FILENAME_FOR_DOWN_COUNTS_SHARED_PREFS) } returns sharedPrefsForCount
-        every { securityManager.buildEncryptedSharedPreferences(EventSyncCache.FILENAME_FOR_PROGRESSES_SHARED_PREFS) } returns sharedPrefsForProgresses
-        every { securityManager.buildEncryptedSharedPreferences(EventSyncCache.FILENAME_FOR_LAST_SYNC_TIME_SHARED_PREFS) } returns sharedPrefsForLastSyncTime
+        every { securityManager.buildEncryptedSharedPreferences(EventSyncCache.FILENAME_FOR_DOWN_COUNTS_SHARED_PREFS) } returns
+            sharedPrefsForCount
+        every { securityManager.buildEncryptedSharedPreferences(EventSyncCache.FILENAME_FOR_PROGRESSES_SHARED_PREFS) } returns
+            sharedPrefsForProgresses
+        every { securityManager.buildEncryptedSharedPreferences(EventSyncCache.FILENAME_FOR_LAST_SYNC_TIME_SHARED_PREFS) } returns
+            sharedPrefsForLastSyncTime
 
         eventSyncCache = EventSyncCache(securityManager, testCoroutineRule.testCoroutineDispatcher)
     }
@@ -56,12 +57,12 @@ class EventSyncCacheTest {
         every {
             sharedPrefsForLastSyncTime.getLong(
                 PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY,
-                -1
+                -1,
             )
         } returns 30
 
         val date = eventSyncCache.readLastSuccessfulSyncTime()
-        assertThat(date).isEqualTo(Date(30))
+        assertThat(date).isEqualTo(Timestamp(30))
     }
 
     @Test
@@ -69,7 +70,7 @@ class EventSyncCacheTest {
         every {
             sharedPrefsForLastSyncTime.getLong(
                 PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY,
-                -1
+                -1,
             )
         } returns -1
 
@@ -82,7 +83,7 @@ class EventSyncCacheTest {
         val editor = mockk<SharedPreferences.Editor>(relaxed = true)
         every { sharedPrefsForLastSyncTime.edit() } returns editor
 
-        eventSyncCache.storeLastSuccessfulSyncTime(Date(30))
+        eventSyncCache.storeLastSuccessfulSyncTime(Timestamp(30))
         verify(exactly = 1) { editor.putLong(PEOPLE_SYNC_CACHE_LAST_SYNC_TIME_KEY, 30) }
     }
 
@@ -159,5 +160,4 @@ class EventSyncCacheTest {
             progressEditor.clear()
         }
     }
-
 }

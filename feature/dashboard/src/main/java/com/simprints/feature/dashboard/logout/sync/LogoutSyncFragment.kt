@@ -18,17 +18,20 @@ import com.simprints.feature.dashboard.views.SyncCardState
 import com.simprints.feature.login.LoginContract
 import com.simprints.feature.login.LoginResult
 import com.simprints.infra.uibase.navigation.handleResult
+import com.simprints.infra.uibase.navigation.navigateSafely
 import com.simprints.infra.uibase.viewbinding.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class LogoutSyncFragment : Fragment(R.layout.fragment_logout_sync) {
-
     private val logoutSyncViewModel by viewModels<LogoutSyncViewModel>()
     private val syncViewModel by viewModels<SyncViewModel>()
     private val binding by viewBinding(FragmentLogoutSyncBinding::bind)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
         initViews()
         observeLiveData()
@@ -44,18 +47,28 @@ class LogoutSyncFragment : Fragment(R.layout.fragment_logout_sync) {
         logoutSyncCard.onSyncButtonClick = { syncViewModel.sync() }
         logoutSyncCard.onOfflineButtonClick =
             { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) }
-        logoutSyncCard.onSelectNoModulesButtonClick =
-            { findNavController().navigate(R.id.action_logoutSyncFragment_to_moduleSelectionFragment) }
+        logoutSyncCard.onSelectNoModulesButtonClick = {
+            findNavController().navigateSafely(
+                this@LogoutSyncFragment,
+                LogoutSyncFragmentDirections.actionLogoutSyncFragmentToModuleSelectionFragment(),
+            )
+        }
         logoutSyncCard.onLoginButtonClick = { syncViewModel.login() }
         logoutSyncToolbar.setNavigationOnClickListener {
             findNavController().popBackStack()
         }
         logoutWithoutSyncButton.setOnClickListener {
-            findNavController().navigate(R.id.action_logoutSyncFragment_to_logoutSyncDeclineFragment)
+            findNavController().navigateSafely(
+                this@LogoutSyncFragment,
+                LogoutSyncFragmentDirections.actionLogoutSyncFragmentToLogoutSyncDeclineFragment(),
+            )
         }
         logoutButton.setOnClickListener {
             logoutSyncViewModel.logout()
-            findNavController().navigate(R.id.action_logoutSyncFragment_to_requestLoginFragment)
+            findNavController().navigateSafely(
+                this@LogoutSyncFragment,
+                LogoutSyncFragmentDirections.actionLogoutSyncFragmentToRequestLoginFragment(),
+            )
         }
     }
 
@@ -67,18 +80,21 @@ class LogoutSyncFragment : Fragment(R.layout.fragment_logout_sync) {
             logoutWithoutSyncButton.isVisible = isLogoutButtonVisible.not()
             logoutSyncInfo.isInvisible = isLogoutButtonVisible
         }
-        syncViewModel.loginRequestedEventLiveData.observe(viewLifecycleOwner, LiveDataEventWithContentObserver { loginArgs ->
-            findNavController().navigate(
-                R.id.action_logOutSyncFragment_to_login,
-                loginArgs
-            )
-        })
+        syncViewModel.loginRequestedEventLiveData.observe(
+            viewLifecycleOwner,
+            LiveDataEventWithContentObserver { loginArgs ->
+                findNavController().navigateSafely(
+                    this@LogoutSyncFragment,
+                    R.id.action_logOutSyncFragment_to_login,
+                    loginArgs,
+                )
+            },
+        )
     }
 
     /**
      * Helper function that calculates whether the 'proceed to log out' button should be visible.
      * The button should be visible only when synchronization is complete
      */
-    private fun isLogoutButtonVisible(state: SyncCardState) =
-        state is SyncCardState.SyncComplete
+    private fun isLogoutButtonVisible(state: SyncCardState) = state is SyncCardState.SyncComplete
 }

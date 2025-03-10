@@ -7,7 +7,6 @@ import com.simprints.infra.logging.Simber
 import javax.inject.Inject
 
 internal class HasDuplicateEnrolmentsUseCase @Inject constructor() {
-
     operator fun invoke(
         projectConfig: ProjectConfiguration,
         steps: List<EnrolLastBiometricStepResult>,
@@ -19,14 +18,12 @@ internal class HasDuplicateEnrolmentsUseCase @Inject constructor() {
 
         return when {
             fingerprintResponse == null && faceResponse == null -> {
-                Simber.tag(ENROLMENT.name)
-                    .i("No capture response. Must be either fingerprint, face or both")
+                Simber.i("No capture response. Must be either fingerprint, face or both", tag = ENROLMENT)
                 true
             }
 
             isAnyResponseWithHighConfidence(projectConfig, fingerprintResponse, faceResponse) -> {
-                Simber.tag(ENROLMENT.name)
-                    .i("There is a subject with confidence score above the high confidence level")
+                Simber.i("There is a subject with confidence score above the high confidence level", tag = ENROLMENT)
                 true
             }
 
@@ -34,13 +31,13 @@ internal class HasDuplicateEnrolmentsUseCase @Inject constructor() {
         }
     }
 
-    private fun getFingerprintMatchResult(steps: List<EnrolLastBiometricStepResult>) =
-        steps.filterIsInstance<EnrolLastBiometricStepResult.FingerprintMatchResult>()
-            .lastOrNull()
+    private fun getFingerprintMatchResult(steps: List<EnrolLastBiometricStepResult>) = steps
+        .filterIsInstance<EnrolLastBiometricStepResult.FingerprintMatchResult>()
+        .lastOrNull()
 
-    private fun getFaceMatchResult(steps: List<EnrolLastBiometricStepResult>) =
-        steps.filterIsInstance<EnrolLastBiometricStepResult.FaceMatchResult>()
-            .lastOrNull()
+    private fun getFaceMatchResult(steps: List<EnrolLastBiometricStepResult>) = steps
+        .filterIsInstance<EnrolLastBiometricStepResult.FaceMatchResult>()
+        .lastOrNull()
 
     private fun isAnyResponseWithHighConfidence(
         configuration: ProjectConfiguration,
@@ -51,15 +48,17 @@ internal class HasDuplicateEnrolmentsUseCase @Inject constructor() {
             configuration.fingerprint
                 ?.getSdkConfiguration(fingerprintResponse.sdk)
                 ?.decisionPolicy
-                ?.high?.toFloat()
+                ?.high
+                ?.toFloat()
         } ?: Float.MAX_VALUE
 
         val faceThreshold = configuration.face
             ?.decisionPolicy
-            ?.high?.toFloat()
+            ?.high
+            ?.toFloat()
             ?: Float.MAX_VALUE
 
-        return fingerprintResponse?.results?.any { it.confidenceScore >= fingerprintThreshold } == true
-            || faceResponse?.results?.any { it.confidenceScore >= faceThreshold } == true
+        return fingerprintResponse?.results?.any { it.confidenceScore >= fingerprintThreshold } == true ||
+            faceResponse?.results?.any { it.confidenceScore >= faceThreshold } == true
     }
 }

@@ -1,18 +1,26 @@
 package com.simprints.fingerprint.infra.scanner.v2.channel
 
+import com.simprints.core.NonCancellableIO
 import com.simprints.fingerprint.infra.scanner.v2.domain.cypressota.CypressOtaCommand
 import com.simprints.fingerprint.infra.scanner.v2.domain.cypressota.CypressOtaResponse
 import com.simprints.fingerprint.infra.scanner.v2.incoming.cypressota.CypressOtaMessageInputStream
 import com.simprints.fingerprint.infra.scanner.v2.outgoing.cypressota.CypressOtaMessageOutputStream
-import com.simprints.fingerprint.infra.scanner.v2.tools.reactive.doSimultaneously
-import io.reactivex.Single
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.coroutines.CoroutineContext
 
-class CypressOtaMessageChannel(
+@Singleton
+class CypressOtaMessageChannel @Inject constructor(
     incoming: CypressOtaMessageInputStream,
-    outgoing: CypressOtaMessageOutputStream
-) : MessageChannel<CypressOtaMessageInputStream, CypressOtaMessageOutputStream>(incoming, outgoing) {
-
-    inline fun <reified R : CypressOtaResponse> sendCypressOtaModeCommandAndReceiveResponse(command: CypressOtaCommand): Single<R> =
+    outgoing: CypressOtaMessageOutputStream,
+    @NonCancellableIO coroutineContext: CoroutineContext,
+) : MessageChannel<CypressOtaMessageInputStream, CypressOtaMessageOutputStream>(
+        incoming,
+        outgoing,
+        coroutineContext,
+    ) {
+    suspend inline fun <reified R : CypressOtaResponse> sendCommandAndReceiveResponse(command: CypressOtaCommand): R = runLockedTask {
         outgoing.sendMessage(command)
-            .doSimultaneously(incoming.receiveResponse())
+        incoming.receiveResponse<R>()
+    }
 }

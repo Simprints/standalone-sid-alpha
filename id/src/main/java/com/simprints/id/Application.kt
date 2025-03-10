@@ -13,8 +13,6 @@ import com.simprints.infra.logging.Simber
 import com.simprints.infra.logging.SimberBuilder
 import com.simprints.infra.sync.SyncOrchestrator
 import dagger.hilt.android.HiltAndroidApp
-import io.reactivex.exceptions.UndeliverableException
-import io.reactivex.plugins.RxJavaPlugins
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -22,8 +20,9 @@ import javax.inject.Inject
 
 @ExcludedFromGeneratedTestCoverageReports("There is no complex business logic to test")
 @HiltAndroidApp
-open class Application : CoreApplication(), Configuration.Provider {
-
+open class Application :
+    CoreApplication(),
+    Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
@@ -51,36 +50,17 @@ open class Application : CoreApplication(), Configuration.Provider {
     }
 
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
+        get() = Configuration
+            .Builder()
             .setWorkerFactory(workerFactory)
             .build()
 
-
     open fun initApplication() {
-        handleUndeliverableExceptionInRxJava()
         SimberBuilder.initialize(this)
-        Simber.tag(DEVICE_ID, true).i(deviceHardwareId)
+        Simber.setUserProperty(DEVICE_ID, deviceHardwareId)
         appScope.launch {
             syncOrchestrator.cleanupWorkers()
             syncOrchestrator.scheduleBackgroundWork()
-        }
-    }
-
-    // RxJava doesn't allow not handled exceptions, when that happens the app crashes.
-    // https://github.com/ReactiveX/RxJava/wiki/What's-different-in-2.0#reason-handling
-    // It can happen when an observable throws an exception, but the
-    // chain has already terminated. E.g. given `chain = zip(network_call1, network_call2)`, when
-    // phone goes offline network_calls1 fails and it stops `chain`. But even network_call2 will throw a
-    // network exception and it won't be handled because the chain has already stopped.
-    open fun handleUndeliverableExceptionInRxJava() {
-        RxJavaPlugins.setErrorHandler { e ->
-            var exceptionToPrint = e
-            if (e is UndeliverableException) {
-                exceptionToPrint = e.cause
-            }
-            Simber.e(e)
-            Simber.d("Undeliverable exception received", exceptionToPrint)
-            exceptionToPrint.printStackTrace()
         }
     }
 }

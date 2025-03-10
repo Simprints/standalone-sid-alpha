@@ -8,20 +8,25 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.simprints.infra.uibase.viewbinding.viewBinding
 import com.simprints.feature.consent.R
 import com.simprints.feature.consent.databinding.FragmentPrivacyBinding
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.ORCHESTRATION
+import com.simprints.infra.logging.Simber
+import com.simprints.infra.uibase.viewbinding.viewBinding
 import dagger.hilt.android.AndroidEntryPoint
 import com.simprints.infra.resources.R as IDR
 
 @AndroidEntryPoint
 internal class PrivacyNoticeFragment : Fragment(R.layout.fragment_privacy) {
-
     private val binding by viewBinding(FragmentPrivacyBinding::bind)
     private val viewModel by viewModels<PrivacyNoticeViewModel>()
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?,
+    ) {
         super.onViewCreated(view, savedInstanceState)
+        Simber.i("PrivacyNoticeFragment started", tag = ORCHESTRATION)
 
         binding.privacyText.movementMethod = ScrollingMovementMethod()
         binding.privacyToolbar.setNavigationOnClickListener { findNavController().popBackStack() }
@@ -32,10 +37,10 @@ internal class PrivacyNoticeFragment : Fragment(R.layout.fragment_privacy) {
     }
 
     private fun observeState() {
-        viewModel.showOffline().observe(viewLifecycleOwner) {
+        viewModel.showOffline.observe(viewLifecycleOwner) {
             showToast(IDR.string.login_no_network_error)
         }
-        viewModel.viewState().observe(viewLifecycleOwner) {
+        viewModel.viewState.observe(viewLifecycleOwner) {
             when (it) {
                 is PrivacyNoticeState.ConsentAvailable -> setConsentAvailable(it)
                 is PrivacyNoticeState.ConsentNotAvailable -> setConsentNotAvailable()
@@ -88,7 +93,7 @@ internal class PrivacyNoticeFragment : Fragment(R.layout.fragment_privacy) {
         } else {
             getString(
                 IDR.string.error_backend_maintenance_with_time_message,
-                estimatedOutage
+                estimatedOutage,
             )
         }
         privacyErrorCard.isVisible = true

@@ -13,9 +13,17 @@ import com.simprints.infra.config.store.local.serializer.ProjectConfigurationSer
 import com.simprints.infra.config.store.local.serializer.ProjectSerializer
 import com.simprints.infra.config.store.models.DeviceConfiguration
 import com.simprints.infra.config.store.models.ProjectConfiguration
-import com.simprints.infra.config.store.testtools.*
+import com.simprints.infra.config.store.testtools.consentConfiguration
+import com.simprints.infra.config.store.testtools.faceConfiguration
+import com.simprints.infra.config.store.testtools.generalConfiguration
+import com.simprints.infra.config.store.testtools.identificationConfiguration
+import com.simprints.infra.config.store.testtools.project
+import com.simprints.infra.config.store.testtools.projectConfiguration
+import com.simprints.infra.config.store.testtools.synchronizationConfiguration
+import com.simprints.infra.config.store.tokenization.TokenizationProcessor
 import com.simprints.testtools.common.syntax.assertThrows
 import io.mockk.mockk
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -26,7 +34,6 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class ConfigLocalDataSourceImplTest {
-
     companion object {
         private const val TEST_PROJECT_DATASTORE_NAME: String = "test_project_datastore"
         private const val TEST_CONFIG_DATASTORE_NAME: String = "test_config_datastore"
@@ -40,18 +47,21 @@ class ConfigLocalDataSourceImplTest {
     private val testContext = InstrumentationRegistry.getInstrumentation().targetContext
     private val testProjectDataStore = DataStoreFactory.create(
         serializer = ProjectSerializer,
-        produceFile = { testContext.dataStoreFile(TEST_PROJECT_DATASTORE_NAME) }
+        produceFile = { testContext.dataStoreFile(TEST_PROJECT_DATASTORE_NAME) },
     )
     private val testProjectConfigDataStore = DataStoreFactory.create(
         serializer = ProjectConfigurationSerializer,
-        produceFile = { testContext.dataStoreFile(TEST_CONFIG_DATASTORE_NAME) }
+        produceFile = { testContext.dataStoreFile(TEST_CONFIG_DATASTORE_NAME) },
     )
     private val testDeviceConfigDataStore = DataStoreFactory.create(
         serializer = DeviceConfigurationSerializer,
-        produceFile = { testContext.dataStoreFile(TEST_DEVICE_CONFIG_DATASTORE_NAME) }
+        produceFile = { testContext.dataStoreFile(TEST_DEVICE_CONFIG_DATASTORE_NAME) },
     )
 
-    private lateinit var configLocalDataSourceImpl :ConfigLocalDataSourceImpl
+    private val tokenizationProcessor = mockk<TokenizationProcessor>(relaxed = true)
+
+
+    private lateinit var configLocalDataSourceImpl: ConfigLocalDataSourceImpl
 
     @Before
     fun setup() {
@@ -62,6 +72,7 @@ class ConfigLocalDataSourceImplTest {
             testProjectDataStore,
             testProjectConfigDataStore,
             testDeviceConfigDataStore,
+            tokenizationProcessor
         )
     }
 
@@ -72,7 +83,7 @@ class ConfigLocalDataSourceImplTest {
 
     @Test
     fun `should throw a NoSuchElementException when there is no project`() = runTest(
-        UnconfinedTestDispatcher()
+        UnconfinedTestDispatcher(),
     ) {
         assertThrows<NoSuchElementException> {
             configLocalDataSourceImpl.getProject()
@@ -80,7 +91,7 @@ class ConfigLocalDataSourceImplTest {
     }
 
     @Test
-    fun `should save the project correctly`() = runTest(UnconfinedTestDispatcher()) {
+    fun `should save the project correctly`() = runTest {
         val projectToSave = project
 
         configLocalDataSourceImpl.saveProject(projectToSave)
@@ -90,7 +101,7 @@ class ConfigLocalDataSourceImplTest {
     }
 
     @Test
-    fun `should clear the project correctly`() = runTest(UnconfinedTestDispatcher()) {
+    fun `should clear the project correctly`() = runTest {
         configLocalDataSourceImpl.saveProject(project)
         configLocalDataSourceImpl.clearProject()
 
@@ -98,25 +109,24 @@ class ConfigLocalDataSourceImplTest {
     }
 
     @Test
-    fun `should save the project configuration and update the device configuration correctly`() =
-        runTest(UnconfinedTestDispatcher()) {
-            val projectConfigurationToSave = projectConfiguration
+    fun `should save the project configuration and update the device configuration correctly`() = runTest {
+        val projectConfigurationToSave = projectConfiguration
 
-            configLocalDataSourceImpl.saveProjectConfiguration(projectConfigurationToSave)
-            val savedProjectConfiguration = configLocalDataSourceImpl.getProjectConfiguration()
-            val updatedDeviceConfiguration = configLocalDataSourceImpl.getDeviceConfiguration()
-            val expectedDeviceConfiguration = DeviceConfiguration(
-                language = projectConfiguration.general.defaultLanguage,
-                selectedModules = listOf(),
-                lastInstructionId = ""
-            )
-            assertThat(savedProjectConfiguration).isEqualTo(projectConfiguration)
-            assertThat(updatedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
-        }
+        configLocalDataSourceImpl.saveProjectConfiguration(projectConfigurationToSave)
+        val savedProjectConfiguration = configLocalDataSourceImpl.getProjectConfiguration()
+        val updatedDeviceConfiguration = configLocalDataSourceImpl.getDeviceConfiguration()
+        val expectedDeviceConfiguration = DeviceConfiguration(
+            language = projectConfiguration.general.defaultLanguage,
+            selectedModules = listOf(),
+            lastInstructionId = "",
+        )
+        assertThat(savedProjectConfiguration).isEqualTo(projectConfiguration)
+        assertThat(updatedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
+    }
 
     @Test
     fun `should save the project configuration and only update the device configuration fingersToCollect if the device configuration has been overwritten for language`() =
-        runTest(UnconfinedTestDispatcher()) {
+        runTest {
             configLocalDataSourceImpl.updateDeviceConfiguration {
                 it.apply {
                     it.language = "fr"
@@ -131,7 +141,7 @@ class ConfigLocalDataSourceImplTest {
             val expectedDeviceConfiguration = DeviceConfiguration(
                 language = "fr",
                 selectedModules = listOf("module1".asTokenizableEncrypted()),
-                lastInstructionId = ""
+                lastInstructionId = "",
             )
             assertThat(savedProjectConfiguration).isEqualTo(projectConfiguration)
             assertThat(updatedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
@@ -139,7 +149,7 @@ class ConfigLocalDataSourceImplTest {
 
     @Test
     fun `should save the project configuration and only update the device configuration language if the device configuration has been overwritten for fingersToCollect`() =
-        runTest(UnconfinedTestDispatcher()) {
+        runTest {
             configLocalDataSourceImpl.updateDeviceConfiguration {
                 it.apply {
                     it.selectedModules = listOf("module1".asTokenizableEncrypted())
@@ -153,7 +163,7 @@ class ConfigLocalDataSourceImplTest {
             val expectedDeviceConfiguration = DeviceConfiguration(
                 language = projectConfiguration.general.defaultLanguage,
                 selectedModules = listOf("module1".asTokenizableEncrypted()),
-                lastInstructionId = ""
+                lastInstructionId = "",
             )
             assertThat(savedProjectConfiguration).isEqualTo(projectConfiguration)
             assertThat(updatedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
@@ -161,7 +171,7 @@ class ConfigLocalDataSourceImplTest {
 
     @Test
     fun `should save the project configuration and update the device configuration correctly with an empty list of fingersToCollect if fingerprint config is missing`() =
-        runTest(UnconfinedTestDispatcher()) {
+        runTest {
             val projectConfigurationToSave = ProjectConfiguration(
                 "id",
                 "projectId",
@@ -172,7 +182,7 @@ class ConfigLocalDataSourceImplTest {
                 consentConfiguration,
                 identificationConfiguration,
                 synchronizationConfiguration,
-                null
+                null,
             )
 
             configLocalDataSourceImpl.saveProjectConfiguration(projectConfigurationToSave)
@@ -181,21 +191,20 @@ class ConfigLocalDataSourceImplTest {
             val expectedDeviceConfiguration = DeviceConfiguration(
                 language = generalConfiguration.defaultLanguage,
                 selectedModules = listOf(),
-                lastInstructionId = ""
+                lastInstructionId = "",
             )
             assertThat(savedProjectConfiguration).isEqualTo(projectConfigurationToSave)
             assertThat(updatedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
         }
 
     @Test
-    fun `should return the default configuration when there is not configuration saved`() =
-        runTest(UnconfinedTestDispatcher()) {
-            val projectConfiguration = configLocalDataSourceImpl.getProjectConfiguration()
-            assertThat(projectConfiguration).isEqualTo(ConfigLocalDataSourceImpl.defaultProjectConfiguration.toDomain())
-        }
+    fun `should return the default configuration when there is not configuration saved`() = runTest {
+        val projectConfiguration = configLocalDataSourceImpl.getProjectConfiguration()
+        assertThat(projectConfiguration).isEqualTo(ConfigLocalDataSourceImpl.defaultProjectConfiguration.toDomain())
+    }
 
     @Test
-    fun `should clear the project configuration correctly`() = runTest(UnconfinedTestDispatcher()) {
+    fun `should clear the project configuration correctly`() = runTest {
         configLocalDataSourceImpl.saveProjectConfiguration(projectConfiguration)
         configLocalDataSourceImpl.clearProjectConfiguration()
 
@@ -204,7 +213,7 @@ class ConfigLocalDataSourceImplTest {
     }
 
     @Test
-    fun `should update the device configuration correctly`() = runTest(UnconfinedTestDispatcher()) {
+    fun `should update the device configuration correctly`() = runTest {
         configLocalDataSourceImpl.updateDeviceConfiguration {
             it.apply {
                 it.language = "fr"
@@ -218,37 +227,36 @@ class ConfigLocalDataSourceImplTest {
     }
 
     @Test
-    fun `should update the fingers to collect in the device configuration correctly`() =
-        runTest(UnconfinedTestDispatcher()) {
-            configLocalDataSourceImpl.updateDeviceConfiguration {
-                it.apply {
-                    it.language = "fr"
-                }
+    fun `should update the fingers to collect in the device configuration correctly`() = runTest {
+        configLocalDataSourceImpl.updateDeviceConfiguration {
+            it.apply {
+                it.language = "fr"
             }
-            var savedDeviceConfiguration = configLocalDataSourceImpl.getDeviceConfiguration()
-            var expectedDeviceConfiguration =
-                DeviceConfiguration("fr", listOf(), "")
-
-            assertThat(savedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
-
-            configLocalDataSourceImpl.updateDeviceConfiguration {
-                it.apply {
-                    it.language = "fr"
-                }
-            }
-            savedDeviceConfiguration = configLocalDataSourceImpl.getDeviceConfiguration()
-            expectedDeviceConfiguration =
-                DeviceConfiguration(
-                    "fr",
-                    listOf(),
-                    ""
-                )
-
-            assertThat(savedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
         }
+        var savedDeviceConfiguration = configLocalDataSourceImpl.getDeviceConfiguration()
+        var expectedDeviceConfiguration =
+            DeviceConfiguration("fr", listOf(), "")
+
+        assertThat(savedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
+
+        configLocalDataSourceImpl.updateDeviceConfiguration {
+            it.apply {
+                it.language = "fr"
+            }
+        }
+        savedDeviceConfiguration = configLocalDataSourceImpl.getDeviceConfiguration()
+        expectedDeviceConfiguration =
+            DeviceConfiguration(
+                "fr",
+                listOf(),
+                "",
+            )
+
+        assertThat(savedDeviceConfiguration).isEqualTo(expectedDeviceConfiguration)
+    }
 
     @Test
-    fun `should clear the device configuration correctly`() = runTest(UnconfinedTestDispatcher()) {
+    fun `should clear the device configuration correctly`() = runTest {
         configLocalDataSourceImpl.updateDeviceConfiguration { it.apply { it.language = "fr" } }
         configLocalDataSourceImpl.clearDeviceConfiguration()
 
@@ -288,5 +296,30 @@ class ConfigLocalDataSourceImplTest {
 
         exist = configLocalDataSourceImpl.hasPrivacyNoticeFor(PROJECT_ID, LANGUAGE)
         assertThat(exist).isEqualTo(false)
+    }
+
+    @Test
+    fun `watchProjectConfiguration should emit updated values when configuration changes`() = runTest {
+        val config1 = projectConfiguration.copy(projectId = "project1")
+        val config2 = projectConfiguration.copy(projectId = "project2")
+        val config3 = projectConfiguration.copy(projectId = "project3")
+        val config4 = projectConfiguration.copy(projectId = "project4")
+        val emittedConfigs = mutableListOf<ProjectConfiguration>()
+
+        configLocalDataSourceImpl.saveProjectConfiguration(config1)
+        configLocalDataSourceImpl.saveProjectConfiguration(config2) // will replay when collection starts below
+
+        val job = launch {
+            configLocalDataSourceImpl.watchProjectConfiguration().collect { emittedConfigs.add(it) }
+        }
+
+        configLocalDataSourceImpl.saveProjectConfiguration(config3)
+        configLocalDataSourceImpl.saveProjectConfiguration(config4)
+
+        assertThat(emittedConfigs).hasSize(3)
+        assertThat(emittedConfigs[0]).isEqualTo(config2)
+        assertThat(emittedConfigs[1]).isEqualTo(config3)
+        assertThat(emittedConfigs[2]).isEqualTo(config4)
+        job.cancel()
     }
 }

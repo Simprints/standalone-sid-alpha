@@ -25,26 +25,20 @@ class FirmwareFileUpdateWorker @AssistedInject constructor(
     private val firmwareRepository: FirmwareRepository,
     @DispatcherBG private val dispatcher: CoroutineDispatcher,
 ) : SimCoroutineWorker(context, params) {
-
     override val tag: String = "FirmwareFileUpdateWorker"
 
     override suspend fun doWork(): Result = withContext(dispatcher) {
-        crashlyticsLog("FirmwareFileUpdateWorker started")
+        crashlyticsLog("Started")
         try {
             firmwareRepository.updateStoredFirmwareFilesWithLatest()
             firmwareRepository.cleanUpOldFirmwareFiles()
 
-            crashlyticsLog("FirmwareFileUpdateWorker succeeded")
-            Result.success()
+            success()
         } catch (e: Throwable) {
-            when {
-                e.isCausedFromBadNetworkConnection() ->
-                    Simber.i(NetworkConnectionException(cause = e))
-
-                else ->
-                    Simber.e(e, "FirmwareFileUpdateWorker failed")
+            if (e.isCausedFromBadNetworkConnection()) {
+                Simber.i("Failed due to network error", NetworkConnectionException(cause = e), tag = tag)
             }
-            Result.retry()
+            retry(e)
         }
     }
 }

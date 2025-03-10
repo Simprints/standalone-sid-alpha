@@ -23,8 +23,8 @@ import com.simprints.fingerprint.infra.scanner.exceptions.safe.ScannerNotPairedE
 import com.simprints.fingerprint.infra.scanner.exceptions.unexpected.UnknownScannerIssueException
 import com.simprints.infra.config.store.models.FingerprintConfiguration
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.logging.LoggingConstants
 import com.simprints.infra.logging.LoggingConstants.AnalyticsUserProperties
+import com.simprints.infra.logging.LoggingConstants.CrashReportTag.FINGER_CAPTURE
 import com.simprints.infra.logging.Simber
 import com.simprints.infra.recent.user.activity.RecentUserActivityManager
 import com.simprints.infra.resources.R
@@ -40,7 +40,6 @@ internal class ConnectScannerViewModel @Inject constructor(
     private val recentUserActivityManager: RecentUserActivityManager,
     private val saveScannerConnectionEvents: SaveScannerConnectionEventsUseCase,
 ) : ViewModel() {
-
     private lateinit var fingerprintSdk: FingerprintConfiguration.BioSdk
     private var allowedGenerations: List<FingerprintConfiguration.VeroGeneration> = emptyList()
     private var remainingConnectionAttempts = 0
@@ -65,12 +64,12 @@ internal class ConnectScannerViewModel @Inject constructor(
         get() = _finish
     private val _finish = MutableLiveData<LiveDataEventWithContent<Boolean>>()
 
-
     private val backButtonBehaviour = MutableLiveData(BackButtonBehaviour.EXIT_FORM)
 
     fun init(params: FingerprintConnectParams) = viewModelScope.launch {
         fingerprintSdk = params.fingerprintSDK
-        allowedGenerations = configManager.getProjectConfiguration()
+        allowedGenerations = configManager
+            .getProjectConfiguration()
             .fingerprint
             ?.allowedScanners
             .orEmpty()
@@ -120,7 +119,9 @@ internal class ConnectScannerViewModel @Inject constructor(
 
     fun handleBackPress() {
         when (backButtonBehaviour.value) {
-            BackButtonBehaviour.DISABLED, null -> { /* Do nothing */ }
+            BackButtonBehaviour.DISABLED, null -> { // Do nothing
+            }
+
             BackButtonBehaviour.EXIT_WITH_ERROR -> _finish.send(false)
             BackButtonBehaviour.EXIT_FORM -> {
                 _scannerConnected.send(false)
@@ -156,7 +157,6 @@ internal class ConnectScannerViewModel @Inject constructor(
         scannerManager.initScanner()
         logMessageForCrashReport("ScannerManager: init vero")
     }
-
 
     private suspend fun connectToVero() {
         _currentStep.postValue(Step.ConnectScanner)
@@ -196,16 +196,20 @@ internal class ConnectScannerViewModel @Inject constructor(
         saveScannerConnectionEvents()
         _currentStep.postValue(Step.Finish)
 
-        Simber.tag(AnalyticsUserProperties.MAC_ADDRESS, true)
-            .i(scannerManager.currentMacAddress ?: "")
-        Simber.tag(AnalyticsUserProperties.SCANNER_ID, true)
-            .i(scannerManager.currentScannerId ?: "")
+        Simber.setUserProperty(
+            AnalyticsUserProperties.MAC_ADDRESS,
+            scannerManager.currentMacAddress.orEmpty(),
+        )
+        Simber.setUserProperty(
+            AnalyticsUserProperties.SCANNER_ID,
+            scannerManager.currentScannerId.orEmpty(),
+        )
 
         _scannerConnected.send(true)
     }
 
     private suspend fun manageVeroErrors(e: Throwable) {
-        Simber.i(e)
+        Simber.i("Vero connection issue", e, tag = FINGER_CAPTURE)
         _scannerConnected.send(false)
 
         launchAlertOrScannerIssueOrShowDialog(e)
@@ -216,21 +220,26 @@ internal class ConnectScannerViewModel @Inject constructor(
         }
     }
 
-    private suspend fun launchAlertOrScannerIssueOrShowDialog(e: Throwable) = _showScannerIssueScreen.send(when (e) {
-        is BluetoothNotEnabledException -> ConnectScannerIssueScreen.BluetoothOff
-        is BluetoothNotSupportedException -> ConnectScannerIssueScreen.BluetoothNotSupported
+    private suspend fun launchAlertOrScannerIssueOrShowDialog(e: Throwable) = _showScannerIssueScreen.send(
+        when (e) {
+            is BluetoothNotEnabledException -> ConnectScannerIssueScreen.BluetoothOff
+            is BluetoothNotSupportedException -> ConnectScannerIssueScreen.BluetoothNotSupported
 
-        is ScannerDisconnectedException, is UnknownScannerIssueException -> ConnectScannerIssueScreen.ScannerError(scannerManager.currentScannerId)
-        is ScannerNotPairedException, is MultiplePossibleScannersPairedException -> determineAppropriateScannerIssueForPairing()
-        is ScannerLowBatteryException -> ConnectScannerIssueScreen.LowBattery
+            is ScannerDisconnectedException, is UnknownScannerIssueException -> ConnectScannerIssueScreen.ScannerError(
+                scannerManager.currentScannerId,
+            )
 
-        is OtaAvailableException -> {
-            setLastConnectedScannerInfo()
-            ConnectScannerIssueScreen.Ota(e.availableOtas)
-        }
+            is ScannerNotPairedException, is MultiplePossibleScannersPairedException -> determineAppropriateScannerIssueForPairing()
+            is ScannerLowBatteryException -> ConnectScannerIssueScreen.LowBattery
 
-        else -> ConnectScannerIssueScreen.UnexpectedError
-    })
+            is OtaAvailableException -> {
+                setLastConnectedScannerInfo()
+                ConnectScannerIssueScreen.Ota(e.availableOtas)
+            }
+
+            else -> ConnectScannerIssueScreen.UnexpectedError
+        },
+    )
 
     private fun determineAppropriateScannerIssueForPairing(): ConnectScannerIssueScreen {
         val couldNotBeVero1 = !allowedGenerations.contains(FingerprintConfiguration.VeroGeneration.VERO_1)
@@ -244,7 +253,7 @@ internal class ConnectScannerViewModel @Inject constructor(
     }
 
     private fun logMessageForCrashReport(message: String) {
-        Simber.tag(LoggingConstants.CrashReportTag.SCANNER_SETUP.name).i(message)
+        Simber.i(message, tag = FINGER_CAPTURE)
     }
 
     fun handleScannerDisconnectedYesClick() {
@@ -262,14 +271,13 @@ internal class ConnectScannerViewModel @Inject constructor(
     private enum class BackButtonBehaviour {
         DISABLED,
         EXIT_FORM,
-        EXIT_WITH_ERROR
+        EXIT_WITH_ERROR,
     }
 
     enum class Step(
         private val index: Int,
         @StringRes val messageRes: Int,
     ) {
-
         Preparation(0, R.string.fingerprint_connect_scanner_bt_connect),
         DisconnectScanner(1, R.string.fingerprint_connect_scanner_bt_connect),
         CheckBtEnabled(2, R.string.fingerprint_connect_scanner_bt_connect),
@@ -295,19 +303,33 @@ internal class ConnectScannerViewModel @Inject constructor(
 
     sealed class ConnectScannerIssueScreen {
         data object BluetoothNoPermission : ConnectScannerIssueScreen()
+
         data object BluetoothOff : ConnectScannerIssueScreen()
+
         data object BluetoothNotSupported : ConnectScannerIssueScreen()
 
         data object NfcPair : ConnectScannerIssueScreen()
+
         data object NfcOff : ConnectScannerIssueScreen()
+
         data object SerialEntryPair : ConnectScannerIssueScreen()
+
         data object LowBattery : ConnectScannerIssueScreen()
 
-        data class ScannerOff(val currentScannerId: String?) : ConnectScannerIssueScreen()
-        data class ScannerError(val currentScannerId: String?) : ConnectScannerIssueScreen()
-        data class Ota(val availableOtas: List<AvailableOta>) : ConnectScannerIssueScreen()
+        data class ScannerOff(
+            val currentScannerId: String?,
+        ) : ConnectScannerIssueScreen()
+
+        data class ScannerError(
+            val currentScannerId: String?,
+        ) : ConnectScannerIssueScreen()
+
+        data class Ota(
+            val availableOtas: List<AvailableOta>,
+        ) : ConnectScannerIssueScreen()
 
         data object UnexpectedError : ConnectScannerIssueScreen()
+
         data object ExitForm : ConnectScannerIssueScreen()
     }
 }

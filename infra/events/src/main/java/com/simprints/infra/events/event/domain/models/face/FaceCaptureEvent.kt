@@ -19,13 +19,13 @@ data class FaceCaptureEvent(
     override var scopeId: String? = null,
     override var projectId: String? = null,
 ) : Event() {
-
     constructor(
         startTime: Timestamp,
         endTime: Timestamp,
         attemptNb: Int,
         qualityThreshold: Float,
         result: FaceCapturePayload.Result,
+        isAutoCapture: Boolean,
         isFallback: Boolean,
         face: Face?,
         id: String = randomUUID(),
@@ -39,17 +39,17 @@ data class FaceCaptureEvent(
             attemptNb = attemptNb,
             qualityThreshold = qualityThreshold,
             result = result,
+            isAutoCapture = isAutoCapture,
             isFallback = isFallback,
             face = face,
-            id = payloadId
+            id = payloadId,
         ),
-        FACE_CAPTURE
+        FACE_CAPTURE,
     )
 
-    override fun getTokenizedFields(): Map<TokenKeyType, TokenizableString> = emptyMap()
+    override fun getTokenizableFields(): Map<TokenKeyType, TokenizableString> = emptyMap()
 
-    override fun setTokenizedFields(map: Map<TokenKeyType, TokenizableString>) =
-        this // No tokenized fields
+    override fun setTokenizedFields(map: Map<TokenKeyType, TokenizableString>) = this // No tokenized fields
 
     @Keep
     data class FaceCapturePayload(
@@ -60,10 +60,13 @@ data class FaceCaptureEvent(
         val attemptNb: Int,
         val qualityThreshold: Float,
         val result: Result,
+        val isAutoCapture: Boolean,
         val isFallback: Boolean,
         val face: Face?,
         override val type: EventType = FACE_CAPTURE,
     ) : EventPayload() {
+        override fun toSafeString(): String = "result: $result, attempt nr: $attemptNb, auto-capture: $isAutoCapture, fallback: $isFallback, " +
+            "quality: ${face?.quality},  format: ${face?.format}"
 
         @Keep
         data class Face(
@@ -80,12 +83,11 @@ data class FaceCaptureEvent(
             OFF_YAW,
             OFF_ROLL,
             TOO_CLOSE,
-            TOO_FAR
+            TOO_FAR,
         }
     }
 
     companion object {
-
         const val EVENT_VERSION = 4
     }
 }

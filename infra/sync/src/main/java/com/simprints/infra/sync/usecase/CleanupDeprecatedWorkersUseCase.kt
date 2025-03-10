@@ -8,7 +8,6 @@ import javax.inject.Inject
 internal class CleanupDeprecatedWorkersUseCase @Inject constructor(
     private val workManager: WorkManager,
 ) {
-
     /**
      * Removes deprecated workers from the work manager.
      *
@@ -21,6 +20,7 @@ internal class CleanupDeprecatedWorkersUseCase @Inject constructor(
     }
 
     private fun namesForDeprecatedWorkers() = listOf(
+        "image-upsync-work-v3", // renamed to "file-upsync-work" in 2025.1.0
         "remote-config-work", // 2022.4.0
         "security-status-check-work", // 2023.2.0
         "image-upsync-work", // 2023.2.0
@@ -40,5 +40,4 @@ internal class CleanupDeprecatedWorkersUseCase @Inject constructor(
         "MASTER_SYNC_SCHEDULERS", // 2023.1.0
         "TAG_PEOPLE_SYNC_WORKER_TYPE_UP_COUNTER", // 2023.1.0
     )
-
 }

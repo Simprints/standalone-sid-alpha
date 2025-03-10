@@ -6,7 +6,7 @@ import androidx.work.WorkerParameters
 import com.simprints.core.DispatcherIO
 import com.simprints.core.workers.SimCoroutineWorker
 import com.simprints.infra.config.sync.ConfigManager
-import com.simprints.infra.enrolment.records.store.EnrolmentRecordRepository
+import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
 import com.simprints.infra.sync.SyncConstants
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -21,11 +21,10 @@ class EnrolmentRecordWorker @AssistedInject constructor(
     private val configManager: ConfigManager,
     @DispatcherIO private val dispatcher: CoroutineDispatcher,
 ) : SimCoroutineWorker(context, params) {
-
     override val tag: String = "EnrolmentRecordWorker"
 
     override suspend fun doWork(): Result = withContext(dispatcher) {
-        crashlyticsLog("Enrolment record upload start")
+        crashlyticsLog("Started")
         try {
             val instructionId =
                 inputData.getString(SyncConstants.RECORD_UPLOAD_INPUT_ID_NAME)
@@ -40,9 +39,9 @@ class EnrolmentRecordWorker @AssistedInject constructor(
                 it.apply { it.lastInstructionId = instructionId }
             }
 
-            Result.success()
+            success()
         } catch (e: Exception) {
-            Result.retry()
+            retry(e)
         }
     }
 }
