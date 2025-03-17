@@ -15,9 +15,7 @@ The original Simprints-Android-ID project depends on closed-source components an
         - Secugen SDKs
 
 3. **Add New Face Biometric SDK:**
-    - Integrated a new face biometric SDK that uses:
-        - Google MLKit for face detection
-        - FaceNet for template extraction and matching
+    - Integrated SimFace library
 
 4. **New Configuration Files:**
     - Created a new `google-services.json`.

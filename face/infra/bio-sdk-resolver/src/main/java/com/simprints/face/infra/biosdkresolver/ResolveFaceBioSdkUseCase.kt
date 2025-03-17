@@ -5,7 +5,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ResolveFaceBioSdkUseCase @Inject constructor(
-    private val faceNetBioSdk: FaceNetBioSdk,
+    private val simFaceBioSdk: SimFaceBioSdk,
 ) {
-    suspend operator fun invoke(): FaceBioSDK = faceNetBioSdk
+    suspend operator fun invoke(): FaceBioSDK = simFaceBioSdk
 }
