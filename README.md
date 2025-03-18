@@ -2,6 +2,14 @@
 
 This repository is a fork of [Simprints-Android-ID](https://github.com/Simprints/Android-Simprints-ID).
 The original Simprints-Android-ID project depends on closed-source components and connects to a closed-source backend. In this repository, We've made it more accessible by incorporating open-source alternatives.
+
+## Biometric library access
+
+Add `GITHUB_USERNAME` and `GITHUB_TOKEN` variables with corresponding 
+values to either `local.properties` file or the environment variables.
+
+Visit [GitHub Tokens](https://github.com/settings/tokens/new) and create a new "Classic" token if required.
+
 ## Changes Made
 
 1. **Disable Login Flow:**
