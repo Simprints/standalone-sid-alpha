@@ -45,6 +45,7 @@ firebase_perf_version = "21.0.4"
 firebase_crashlyticsPlugin_version = "3.0.3"
 firebase_perfPlugin_version = "1.4.2"
 firebase_distrtibutionPlugin_version = "5.0.0"
+simface = "2024.4.3"
 
 # [MS-483] Newer versions of Retrofit (>=2.10.0) don't support android apis <=25 beacuse of the internal Jackson library
 retrofit_version = "2.9.0"
@@ -64,7 +65,6 @@ circleImageView_version = "3.1.0"
 kermit_version = "2.0.5"
 zip4j_version = "2.11.5"
 tensorflowLiteSupportVersion = "0.4.4"
-tensorflowLiteVersion = "2.16.1"
 timber_version = "5.0.1"
 
 libsimprints_version = "2025.1.3-SNAPSHOT"
@@ -134,12 +134,12 @@ androidX-annotation-annotation = { module = "androidx.annotation:annotation", ve
 support-material = { module = "com.google.android.material:material", version.ref = "matertial_version" }
 
 # TensorFlow Lite
-tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tensorflowLiteVersion" }
-tensorflow-lite-gpu = { module = "org.tensorflow:tensorflow-lite-gpu", version.ref = "tensorflowLiteVersion" }
-tensorflow-lite-gpu-api = { module = "org.tensorflow:tensorflow-lite-gpu-api", version.ref = "tensorflowLiteVersion" }
 tensorflow-lite-metadata = { module = "org.tensorflow:tensorflow-lite-metadata", version.ref = "tensorflowLiteSupportVersion" }
 tensorflow-lite-support = { module = "org.tensorflow:tensorflow-lite-support", version.ref = "tensorflowLiteSupportVersion" }
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetectionVersion" }
+
+# Simface
+simface = { module = "com.simprints.biometrics:simface", version.ref = "simface" }
 
 #WorkManager
 workManager-work = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx_work_version" }

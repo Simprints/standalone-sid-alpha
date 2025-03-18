@@ -24,6 +24,15 @@ dependencyResolutionManagement {
         gradlePluginPortal()
         maven(url = "https://oss.sonatype.org/content/repositories/snapshots/")
         maven(url = "https://s3.amazonaws.com/repo.commonsware.com")
+
+        maven {
+            url = uri("https://maven.pkg.github.com/Simprints/Biometrics-SimFace")
+            credentials {
+                username =
+                    properties.getProperty("GITHUB_USERNAME", System.getenv("GITHUB_USERNAME"))
+                password = properties.getProperty("GITHUB_TOKEN", System.getenv("GITHUB_TOKEN"))
+            }
+        }
     }
 }
 
@@ -51,7 +60,7 @@ include(
     ":face:capture",
     ":face:infra:base-bio-sdk",
     ":face:infra:bio-sdk-resolver",
-    ":face:infra:facenet-wrapper",
+    ":face:infra:simface-wrapper",
 )
 
 // Feature modules
