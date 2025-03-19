@@ -17,7 +17,6 @@ import com.simprints.infra.events.event.domain.models.subject.FaceTemplate
 import com.simprints.infra.events.event.domain.models.subject.FingerprintReference
 import com.simprints.infra.events.event.domain.models.subject.FingerprintTemplate
 import java.util.Date
-import java.util.UUID
 import javax.inject.Inject
 
 class SubjectFactory @Inject constructor(
@@ -65,23 +64,21 @@ class SubjectFactory @Inject constructor(
     }
 
     fun buildSubjectFromCaptureResults(
+        subjectId: String,
         projectId: String,
         attendantId: TokenizableString,
         moduleId: TokenizableString,
         fingerprintResponse: FingerprintCaptureResult?,
         faceResponse: FaceCaptureResult?,
-    ): Subject {
-        val subjectId = UUID.randomUUID().toString()
-        return buildSubject(
-            subjectId = subjectId,
-            projectId = projectId,
-            attendantId = attendantId,
-            moduleId = moduleId,
-            createdAt = Date(timeHelper.now().ms),
-            fingerprintSamples = fingerprintResponse?.let { extractFingerprintSamples(it) }.orEmpty(),
-            faceSamples = faceResponse?.let { extractFaceSamples(it) }.orEmpty(),
-        )
-    }
+    ): Subject = buildSubject(
+        subjectId = subjectId,
+        projectId = projectId,
+        attendantId = attendantId,
+        moduleId = moduleId,
+        createdAt = Date(timeHelper.now().ms),
+        fingerprintSamples = fingerprintResponse?.let { extractFingerprintSamples(it) }.orEmpty(),
+        faceSamples = faceResponse?.let { extractFaceSamples(it) }.orEmpty(),
+    )
 
     fun buildSubject(
         subjectId: String,

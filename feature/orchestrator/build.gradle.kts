@@ -36,6 +36,7 @@ dependencies {
     implementation(project(":infra:events"))
     implementation(project(":infra:event-sync"))
     implementation(project(":infra:images"))
+    implementation(project(":infra:template-protection"))
 
     implementation(libs.jackson.core)
 }

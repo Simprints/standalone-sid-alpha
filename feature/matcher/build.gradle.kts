@@ -15,6 +15,7 @@ dependencies {
     implementation(project(":infra:events"))
     implementation(project(":infra:config-store"))
     implementation(project(":infra:config-sync"))
+    implementation(project(":infra:template-protection"))
 
     implementation(project(":face:infra:bio-sdk-resolver"))
 

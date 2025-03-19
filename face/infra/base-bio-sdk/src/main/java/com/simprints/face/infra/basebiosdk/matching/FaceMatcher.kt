@@ -25,14 +25,8 @@ abstract class FaceMatcher {
     suspend fun getHighestComparisonScoreForCandidate(
         probes: List<FaceSample>,
         candidate: FaceIdentity,
-    ): Float {
-        var highestScore = 0f
-        probes.forEach { probe ->
-            candidate.faces.forEach { face ->
-                val score = getComparisonScore(probe.template, face.template)
-                if (score > highestScore) highestScore = score
-            }
-        }
-        return highestScore
-    }
+    ): Float = probes
+        .flatMap { probe ->
+            candidate.faces.map { face -> getComparisonScore(probe.template, face.template) }
+        }.max()
 }

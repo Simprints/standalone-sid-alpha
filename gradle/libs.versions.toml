@@ -46,6 +46,7 @@ firebase_crashlyticsPlugin_version = "3.0.3"
 firebase_perfPlugin_version = "1.4.2"
 firebase_distrtibutionPlugin_version = "5.0.0"
 simface = "2024.4.3"
+polyprotect = "2024.4.2"
 
 # [MS-483] Newer versions of Retrofit (>=2.10.0) don't support android apis <=25 beacuse of the internal Jackson library
 retrofit_version = "2.9.0"
@@ -140,6 +141,7 @@ face-detection = { module = "com.google.mlkit:face-detection", version.ref = "fa
 
 # Simface
 simface = { module = "com.simprints.biometrics:simface", version.ref = "simface" }
+polyprotect = { module = "com.simprints.biometrics:polyprotect", version.ref = "polyprotect" }
 
 #WorkManager
 workManager-work = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx_work_version" }

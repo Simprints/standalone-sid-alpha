@@ -4,7 +4,6 @@ import com.simprints.core.DispatcherBG
 import com.simprints.face.infra.basebiosdk.matching.FaceIdentity
 import com.simprints.face.infra.basebiosdk.matching.FaceMatcher
 import com.simprints.face.infra.basebiosdk.matching.FaceSample
-
 import com.simprints.face.infra.biosdkresolver.ResolveFaceBioSdkUseCase
 import com.simprints.infra.config.store.models.Project
 import com.simprints.infra.enrolment.records.repository.EnrolmentRecordRepository
@@ -12,6 +11,7 @@ import com.simprints.infra.enrolment.records.repository.domain.models.BiometricD
 import com.simprints.infra.enrolment.records.repository.domain.models.SubjectQuery
 import com.simprints.infra.logging.LoggingConstants
 import com.simprints.infra.logging.Simber
+import com.simprints.infra.templateprotection.TemplateProtection
 import com.simprints.matcher.FaceMatchResult
 import com.simprints.matcher.MatchParams
 import com.simprints.matcher.usecases.MatcherUseCase.MatcherState
@@ -27,6 +27,7 @@ internal class FaceMatcherUseCase @Inject constructor(
     private val enrolmentRecordRepository: EnrolmentRecordRepository,
     private val resolveFaceBioSdk: ResolveFaceBioSdkUseCase,
     private val createRanges: CreateRangesUseCase,
+    private val templateProtection: TemplateProtection,
     @DispatcherBG private val dispatcher: CoroutineDispatcher,
 ) : MatcherUseCase {
     private lateinit var faceMatcher: FaceMatcher
@@ -43,6 +44,7 @@ internal class FaceMatcherUseCase @Inject constructor(
             return@channelFlow
         }
         val samples = mapSamples(matchParams.probeFaceSamples)
+
         val queryWithSupportedFormat = matchParams.queryForCandidates.copy(
             faceSampleFormat = faceMatcher.supportedTemplateFormat,
         )
@@ -87,7 +89,7 @@ internal class FaceMatcherUseCase @Inject constructor(
         send(MatcherState.Success(resultItems, loadedCandidates, faceMatcher.matcherName))
     }
 
-    private fun mapSamples(probes: List<MatchParams.FaceSample>) = probes.map { FaceSample (it.faceId, it.template) }
+    private fun mapSamples(probes: List<MatchParams.FaceSample>) = probes.map { FaceSample(it.faceId, it.template) }
 
     private suspend fun getCandidates(
         query: SubjectQuery,
@@ -108,10 +110,21 @@ internal class FaceMatcherUseCase @Inject constructor(
         batchCandidates: List<FaceIdentity>,
         samples: List<FaceSample>,
     ) = batchCandidates.fold(MatchResultSet<FaceMatchResult.Item>()) { acc, item ->
+        val candidateAux = templateProtection.getAuxData(item.subjectId)
+
+        // TODO this is a very inefficient 1:N implementation with protected templates
+        val encodedSamples = if (candidateAux != null) {
+            samples.map { face ->
+                face.copy(template = templateProtection.encodeTemplate(face.template, candidateAux))
+            }
+        } else {
+            samples
+        }
+
         acc.add(
             FaceMatchResult.Item(
                 item.subjectId,
-                faceMatcher.getHighestComparisonScoreForCandidate(samples, item),
+                faceMatcher.getHighestComparisonScoreForCandidate(encodedSamples, item),
             ),
         )
     }

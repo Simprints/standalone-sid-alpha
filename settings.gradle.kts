@@ -33,6 +33,14 @@ dependencyResolutionManagement {
                 password = properties.getProperty("GITHUB_TOKEN", System.getenv("GITHUB_TOKEN"))
             }
         }
+        maven {
+            url = uri("https://maven.pkg.github.com/Simprints/Biometrics-SimPolyProtect")
+            credentials {
+                username =
+                    properties.getProperty("GITHUB_USERNAME", System.getenv("GITHUB_USERNAME"))
+                password = properties.getProperty("GITHUB_TOKEN", System.getenv("GITHUB_TOKEN"))
+            }
+        }
     }
 }
 
@@ -106,4 +114,5 @@ include(
     ":infra:ui-base",
     ":infra:sync",
     ":infra:event-sync",
+    ":infra:template-protection",
 )
