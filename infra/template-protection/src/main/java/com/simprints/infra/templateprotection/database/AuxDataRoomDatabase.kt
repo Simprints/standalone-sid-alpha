@@ -14,7 +14,7 @@ import net.sqlcipher.database.SupportFactory
     version = 1,
     exportSchema = true,
 )
-@TypeConverters(ByteArrayConverters::class)
+@TypeConverters(IntArrayConverters::class)
 @Keep
 internal abstract class AuxDataRoomDatabase : RoomDatabase() {
     abstract val auxDataDao: AuxDataDao

@@ -8,8 +8,8 @@ import com.simprints.biometrics.polyprotect.AuxData
 internal data class DbAuxData(
     @PrimaryKey val subjectId: String,
     // SQLite does not support array types, so storing as combined string instead
-    val exponents: ByteArray,
-    val coefficients: ByteArray,
+    val exponents: IntArray,
+    val coefficients: IntArray,
 )
 
 internal fun DbAuxData.fromDbToDomain(): AuxData = AuxData(

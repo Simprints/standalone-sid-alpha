@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a1265ac86978482cff0c3df3f8ca1497",
+    "identityHash": "4d4dd5e61e60dab05f1d867ed5bb675d",
     "entities": [
       {
         "tableName": "DbAuxData",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` TEXT NOT NULL, `exponents` BLOB NOT NULL, `coefficients` BLOB NOT NULL, PRIMARY KEY(`subjectId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` TEXT NOT NULL, `exponents` TEXT NOT NULL, `coefficients` TEXT NOT NULL, PRIMARY KEY(`subjectId`))",
         "fields": [
           {
             "fieldPath": "subjectId",
@@ -17,13 +17,13 @@
           {
             "fieldPath": "exponents",
             "columnName": "exponents",
-            "affinity": "BLOB",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
             "fieldPath": "coefficients",
             "columnName": "coefficients",
-            "affinity": "BLOB",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -40,7 +40,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a1265ac86978482cff0c3df3f8ca1497')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4d4dd5e61e60dab05f1d867ed5bb675d')"
     ]
   }
 }
