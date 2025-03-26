@@ -19,6 +19,6 @@ class SimFaceMatcher @Inject constructor(
         matchAgainst: ByteArray,
     ): Float {
         // SDK returns score in [0, 1] range, SID expects [0, 100]
-        return simFaceFacade.matchProcessor.verificationScore(probe, matchAgainst) * 100f
+        return simFaceFacade.matchProcessor.verificationScore(probe, matchAgainst).toFloat() * 100f
     }
 }
