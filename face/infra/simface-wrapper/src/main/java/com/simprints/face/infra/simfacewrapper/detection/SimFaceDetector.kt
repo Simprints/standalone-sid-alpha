@@ -20,7 +20,8 @@ class SimFaceDetector @Inject constructor(
         val face = faces.getOrNull(0) ?: return@runBlocking null
         if (face.quality < 0.6) return@runBlocking null
 
-        val template = simFace.embeddingProcessor.getEmbedding(bitmap)
+        val alignedBitmap = simFace.faceDetectionProcessor.alignFace(bitmap, face.absoluteBoundingBox)
+        val template = simFace.embeddingProcessor.getEmbedding(alignedBitmap)
 
         return@runBlocking Face(
             sourceWidth = bitmap.width,
