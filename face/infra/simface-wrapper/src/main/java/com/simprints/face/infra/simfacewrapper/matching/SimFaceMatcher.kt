@@ -19,6 +19,8 @@ class SimFaceMatcher @Inject constructor(
         matchAgainst: ByteArray,
     ): Float {
         // SDK returns score in [0, 1] range, SID expects [0, 100]
-        return simFaceFacade.matchProcessor.verificationScore(probe, matchAgainst).toFloat() * 100f
+        val baseScore = simFaceFacade.matchProcessor.verificationScore(probe, matchAgainst).toFloat()
+        // TODO: remove the random adjustment after we find out why the returned range is always [0.5;1]
+        return (baseScore - 0.5).coerceAtLeast(0.0).toFloat() * 200f
     }
 }
