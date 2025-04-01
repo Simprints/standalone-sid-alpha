@@ -18,8 +18,8 @@ data class AppMatchResult(
     // Temporarily using match confidence as a proxy for tiers.
     val tier: AppResponseTier
         get() = when (matchConfidence) {
-            AppMatchConfidence.NONE -> AppResponseTier.TIER_4
-            AppMatchConfidence.LOW -> AppResponseTier.TIER_3
+            AppMatchConfidence.NONE -> AppResponseTier.TIER_5
+            AppMatchConfidence.LOW -> AppResponseTier.TIER_4
             AppMatchConfidence.MEDIUM -> AppResponseTier.TIER_2
             AppMatchConfidence.HIGH -> AppResponseTier.TIER_1
         }

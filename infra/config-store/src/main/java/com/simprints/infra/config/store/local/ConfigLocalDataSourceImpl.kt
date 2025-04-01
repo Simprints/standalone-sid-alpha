@@ -170,8 +170,8 @@ internal class ConfigLocalDataSourceImpl @Inject constructor(
                         qualityThreshold = 0f,
                         imageSavingStrategy = FaceConfiguration.ImageSavingStrategy.NEVER,
                         decisionPolicy = DecisionPolicy(
-                            low = 1,
-                            medium = 30,
+                            low = 20,
+                            medium = 50,
                             high = 70,
                         ),
                         version = "1.0",
