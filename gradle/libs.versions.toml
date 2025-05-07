@@ -45,7 +45,7 @@ firebase_perf_version = "21.0.4"
 firebase_crashlyticsPlugin_version = "3.0.3"
 firebase_perfPlugin_version = "1.4.2"
 firebase_distrtibutionPlugin_version = "5.0.0"
-simface = "2025.1.1"
+simface = "2025.1.2"
 polyprotect = "2025.1.1"
 
 # [MS-483] Newer versions of Retrofit (>=2.10.0) don't support android apis <=25 beacuse of the internal Jackson library
@@ -68,7 +68,7 @@ zip4j_version = "2.11.5"
 tensorflowLiteSupportVersion = "0.4.4"
 timber_version = "5.0.1"
 
-libsimprints_version = "2025.1.3-SNAPSHOT"
+libsimprints_version = "2025.1.3"
 
 junit_version = "4.13.2"
 junit_ext_version = "1.2.1"
